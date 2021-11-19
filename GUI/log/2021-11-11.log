@@ -1,0 +1,10 @@
+11/11/2021 03:45:40 PM INFO     main_gui.py, 41  Mocking data: True
+11/11/2021 03:45:41 PM INFO     data_class.py, 105  adding device: device_2 to data_class
+11/11/2021 03:45:41 PM INFO     data_class.py, 105  adding device: device_3 to data_class
+11/11/2021 03:46:38 PM INFO     main_gui.py, 41  Mocking data: True
+11/11/2021 03:50:49 PM INFO     data_class.py, 105  adding device: device_1 to data_class
+11/11/2021 03:51:01 PM INFO     main_gui.py, 41  Mocking data: True
+11/11/2021 03:51:02 PM INFO     data_class.py, 105  adding device: device_1 to data_class
+11/11/2021 03:51:04 PM INFO     data_class.py, 105  adding device: device_1 to data_class
+11/11/2021 06:58:11 PM INFO     main_gui.py, 41  Mocking data: True
+11/11/2021 06:58:12 PM INFO     data_class.py, 105  adding device: device_1 to data_class

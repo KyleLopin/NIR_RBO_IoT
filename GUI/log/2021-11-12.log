@@ -1,0 +1,27 @@
+11/12/2021 09:31:40 AM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 10:15:37 AM INFO     data_class.py, 109  adding device: device_1 to data_class
+11/12/2021 01:34:34 PM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 01:35:18 PM INFO     data_class.py, 109  adding device: device_1 to data_class
+11/12/2021 01:36:06 PM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 01:36:18 PM INFO     data_class.py, 109  adding device: device_1 to data_class
+11/12/2021 06:25:43 PM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 06:25:43 PM INFO     data_class.py, 109  adding device: device_1 to data_class
+11/12/2021 06:33:55 PM INFO     data_class.py, 109  adding device: device_1 to data_class
+11/12/2021 06:37:20 PM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 06:37:21 PM INFO     data_class.py, 109  adding device: device_1 to data_class
+11/12/2021 06:40:25 PM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 06:40:25 PM INFO     data_class.py, 109  adding device: device_1 to data_class
+11/12/2021 06:56:50 PM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 06:56:51 PM INFO     data_class.py, 110  adding device: device_1 to data_class
+11/12/2021 06:58:07 PM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 06:58:08 PM INFO     data_class.py, 110  adding device: device_1 to data_class
+11/12/2021 07:00:13 PM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 07:00:15 PM INFO     data_class.py, 110  adding device: device_1 to data_class
+11/12/2021 07:04:36 PM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 07:04:37 PM INFO     data_class.py, 92  adding device: device_1 to data_class
+11/12/2021 07:04:44 PM INFO     data_class.py, 92  adding device: position 1 to data_class
+11/12/2021 07:04:55 PM INFO     data_class.py, 92  adding device: device_1 to data_class
+11/12/2021 07:29:20 PM INFO     main_gui.py, 41  Mocking data: True
+11/12/2021 07:29:21 PM INFO     data_class.py, 92  adding device: device_1 to data_class
+11/12/2021 07:29:29 PM INFO     data_class.py, 92  adding device: position 1 to data_class
+11/12/2021 07:29:55 PM INFO     data_class.py, 92  adding device: device_1 to data_class
