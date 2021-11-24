@@ -80,10 +80,12 @@ class RBOGUI(tk.Tk):
             else:
                 self.connection = connection.AWSConnectionMQTT(self, self.data)
 
-
+        self.data.add_connection(self.connection)
         self.graph.add_connection(self.connection)
         menubar = option_menu.NIRMenu(self)
         self.config(menu=menubar)
+        self.loop = None
+        self.maintain_mqtt_connact()
 
         # self.time_scale_frame = graph.TimeScale(self, self.graph)
         # self.time_scale_frame.pack(side=tk.RIGHT)
@@ -126,6 +128,14 @@ class RBOGUI(tk.Tk):
                 # print(data, device)
                 # make a package and send this to the add_data
                 # method in the data_class.TimeStreamData
+                save_pkt = {"time": data[time_index]}
+                save_pkt["OryConc"] = float(data[ory_index])
+                # space in this for some reason
+                save_pkt["device"] = data[device_index].lstrip()
+                save_pkt["packet id"] = data[packet_index]
+                # send to data_class but don't save the data again
+                # print(f"saving pkt: {save_pkt}")
+                self.data.add_data(save_pkt, save_data=False)
                 try:  # incase file error just pass
                     save_pkt = {"time": data[time_index]}
                     save_pkt["OryConc"] = float(data[ory_index])
@@ -170,6 +180,16 @@ class RBOGUI(tk.Tk):
     def update_model(self, device):
         self.connection.update_model(device)
 
+    def maintain_mqtt_connact(self):
+        """ Loop to keep checking if mqtt is still contacted if computer
+        went to sleep"""
+        self.loop = self.after(10000, self.maintain_mqtt_connact)
+        # TODO: fill in
+        topic = "device/hub/status"
+        msg = "check"
+        print("MQTT check")
+        self.connection.publish(topic, msg)
+
     def main_destroy(self):
         """
         Go through the connection and stop the mqtt loop and disconnect,
@@ -177,6 +197,7 @@ class RBOGUI(tk.Tk):
         then quit, destory and exit, idk how many are actually
         needed but it works
         """
+        self.after_cancel(self.loop)
         self.connection.destroy()
         self.graph.destroy()
         self.quit()

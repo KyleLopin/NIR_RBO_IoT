@@ -22,6 +22,9 @@ import global_params
 
 DEVICES = global_params.DEVICES.keys()
 POSITIONS = global_params.POSITIONS
+MODEL_KEYS = ["Constant", "Coeffs", "Ref Intensities",
+              "Dark Intensities", "pt scans", "scan avgs"]
+
 # MQTT_SERVER = "localhost"
 # MQTT_SERVER = "192.168.1.52"
 MQTT_LOCALHOST = "localhost"
@@ -53,7 +56,8 @@ class ConnectionClass:
         self.master = master
         self.found_server = False
         self.connected = False
-        self.client = mqtt.Client(client_name)
+        self.client = mqtt.Client(client_name,
+                                  protocol=mqtt.MQTTv311)
         print(f"got client {self.client}")
         self.client.on_connect = self._on_connection
         self.client.on_message = self._on_message
@@ -68,12 +72,18 @@ class ConnectionClass:
         print("Got message:")
         print(msg.topic)
         print(msg.payload)
+        device = msg.topic.split("/")[1]
+        print(f"message from device: {device}")
         if 'data' in msg.topic:
 
             data_str = msg.payload.decode('utf8')
             # json_loaded = json.load(data_str)
             # json_data = json.dump(json_loaded, sort_keys=True)
             self.parse_mqtt_data(ast.literal_eval(data_str))
+        elif 'hub' in msg.topic:
+            # mqtt hub is still connected
+            return True
+
         elif 'status' in msg.topic:
             # JSON converts False to false and True to true, fix that here
             payload = msg.payload.decode('utf8').replace("false", "False")
@@ -85,25 +95,56 @@ class ConnectionClass:
             if "status" in msg_dict:
                 self.parse_mqtt_status(msg_dict)
 
-
     def parse_mqtt_status(self, packet):
+        print("parse mqtt status ")
+        print(packet["status"] == "model params")
         device = packet["status"]
+        print("check 3", device in POSITIONS, device)
         if device in POSITIONS:
-            self.master.graph.position_online(device,
-                                              packet["running"])
+            print("check 1")
+            if "running" in packet:
+                self.master.graph.position_online(device,
+                                                  packet["running"])
             if "packets sent" in packet:
                 # device is in the position format now
                 self.data.update_latest_packet_id(POSITIONS[device],
-                                                  msg_dict["packets sent"])
+                                                  packet["packets sent"])
+                self.update_model(POSITIONS[device])
                 # check if all the packets the sensor read
                 # have been sent to this program
                 # ids_to_get = self.data.get_missing_packets(POSITIONS[device])
                 # print(f"missing data: {ids_to_get}")
                 # if ids_to_get:
                 #     self.ask_for_remote_data(device, ids_to_get)
+            print("check 2", "model params" in packet)
             if "model params" in packet:
                 print("model params recieved")
                 print(packet)
+                # check if data from sensor is same as sent
+                model_correct = self.check_model(device, packet)
+                if not model_correct:
+                    print("Error checking model, please reload")
+
+    def check_model(self, position, sensor_model):
+        model_the_same = False
+        # get the stored model
+        with open("sensor_settings.json", "r") as _file:
+            data = json.load(_file)
+        data = data[position]
+        print(f"Master model params:")
+        for key in MODEL_KEYS:
+            print(key)
+            print(data[key])
+            if data[key] != sensor_model[key]:
+                return False
+        # if all data and sensor models are the same,
+        # everything is all good, hopefully
+        device = global_params.POSITIONS[position]
+        print("Model correct")
+        if device in self.data.devices:
+            self.data.devices[device].model_checked = True
+            return True
+        return False  # no device
 
     # def ask_for_remote_data(self, device, ids):
     #     if device not in DEVICES:
@@ -126,6 +167,11 @@ class ConnectionClass:
     #     if ids:
     #         self.publish(_topic, _message)
 
+    def ask_for_stored_data(self, device, pkt_num):
+        _topic = f"device/{device}/control"
+        _message = f'{{"command": "send packet", "packet numbers": {pkt_num}}}'
+        self.publish(_topic, _message)
+
     def parse_mqtt_data(self, packet):
         # print(f"Parsing packet: {packet}")
         print(f"TODO: fix for AWS data")
@@ -143,6 +189,10 @@ class ConnectionClass:
         print(f"MQTT connected with client {client}, data: {userdata}, flags:{flags}, rc: {rc}")
         print("TODO: if computer went to sleep, go back and check sensors for data")
         self.connected = True
+        if not self.found_server:
+            self.check_connections()
+            self.update_models()
+
         self.found_server = True
         client.subscribe(MQTT_PATH_LISTEN)
         client.subscribe(MQTT_STATUS_CHANNEL)
@@ -176,16 +226,24 @@ class ConnectionClass:
     def is_server_found(self):
         return self.found_server
 
+    def update_models(self):
+        for position in POSITIONS:
+            self.update_model(position)
+
     def update_model(self, device):
         with open("sensor_settings.json", "r") as _file:
             data = json.load(_file)
+        if device not in data:
+            return
         device_data = data[device]
-        device_topic = f"device/{device}/control"
+
+        device_topic = f"device/{global_params.POSITIONS[device]}/control"
         update_pkt = {"command": "update model"}
         for key in device_data.keys():
             update_pkt[key] = device_data[key]
         pkt = json.dumps(update_pkt)
         self.publish(device_topic, pkt)
+        print("Done with model")
 
     def get_model_params(self, device):
         device_topic = f"device/{device}/control"

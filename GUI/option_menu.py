@@ -30,10 +30,12 @@ class NIRMenu(tk.Menu):
         # setting_menu.add_command(label="Rolling Avg",
         #                          command=self.change_rolling_avg)
         for device in global_params.POSITIONS.keys():
-            print()
             setting_menu.add_command(label=f"Set {device} model parameters",
                                      command=lambda d=device: self.change_model(d))
-
+        setting_menu.add_separator()
+        for device in global_params.POSITIONS.keys():
+            setting_menu.add_command(label=f"Set {device} scan parameters",
+                                     command=lambda d=device: self.change_scan_params(d))
 
     def make_filemenu(self):
         self.file_menu = tk.Menu(self)
@@ -60,7 +62,7 @@ class NIRMenu(tk.Menu):
         self.master.open_file(filename)
 
     def change_model(self, device):
-        print(f"change model device: {device}")
+        # print(f"change model device: {device}")
         filename = self.get_filename()
         if not filename:
             return  # no name
@@ -73,10 +75,10 @@ class NIRMenu(tk.Menu):
                 if i == 0:
                     # check for model params in the header
                     for i, item in enumerate(line_split):
-                        print(i, item, "Ref" in item)
+                        # print(i, item, "Ref" in item)
                         if "Ref" in item or "ref" in item:
                             ref_index = i
-                            print(f"ref_index = {ref_index}")
+                            # print(f"ref_index = {ref_index}")
                         elif "Coef" in item or "coef" in item:
                             coef_index = i
                         elif "Cons" in item or "cons" in item:
@@ -115,6 +117,52 @@ class NIRMenu(tk.Menu):
 
     def change_rolling_avg(self):
         pass
+
+    def change_scan_params(self, device):
+        print(f"changing scan paremeters for {device}")
+        ChangeScanParams(self.master, device)
+
+
+class ChangeScanParams(tk.Toplevel):
+    def __init__(self, master, device):
+        tk.Toplevel.__init__(self, master)
+        self.geometry("300x300")
+        self.title = "Set Scan parameters"
+        self.master = master
+        avg_points, avg_scan = self.get_params(device)
+        tk.Label(self, text="Set how many averages per point to use:").pack()
+        self.pt_var = tk.IntVar()
+        self.pt_var.set(avg_points)
+        tk.Spinbox(self, from_=1, to=500, width=10,
+                   textvariable=self.pt_var).pack()
+        tk.Label(self, text="Set the number of scan averages").pack()
+        self.scan_var = tk.IntVar()
+        self.scan_var.set(avg_scan)
+        tk.Spinbox(self, from_=1, to=150, width=15,
+                   textvariable=self.scan_var).pack()
+        button_frame = tk.Frame(self)
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        tk.Button(button_frame, text="Submit", 
+                  command=self.submit).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Exit",
+                  command=self.exit).pack(side=tk.RIGHT)
+
+    def get_params(self, device):
+        with open("sensor_settings.json", "r") as _file:
+            data = json.load(_file)
+        data = data[device]
+        for key in data.keys():
+            print(key)
+            print(data[key])
+        pt_avg = data["pt scans"]
+        scan_avg = data["scan avgs"]
+        return pt_avg, scan_avg
+    
+    def submit(self):
+        print(f"submitting values {self.pt_var.get()} and {self.scan_var.get()}")
+    
+    def exit(self):
+        self.destroy()
 
 
 class RollingTopLevel(tk.Toplevel):

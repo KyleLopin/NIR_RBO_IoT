@@ -41,13 +41,18 @@ import pandas as pd
 #               "Coeffs": pls_coeff,
 #               "Ref Intensities": ref_intensity}
 # print(json_model)
-with open("sensor_settings.json", "r") as _file:
-    data = json.load(_file)
-print(data.keys())
-for device in data.keys():
-    for key in data[device].keys():
-        print(device, key)
-        print(data[device][key])
+# with open("sensor_settings.json", "r") as _file:
+#     data = json.load(_file)
+# print(data.keys())
+# for device in data.keys():
+#     print(device)
+#     data[device]["pt scans"] = 100
+#     data[device]["scan avgs"] = 60
+#     for key in data[device].keys():
+#         print(device, key)
+#         print(data[device][key])
+# with open("sensor_settings.json", "w") as _file:
+#     json.dump(data, _file)
 # LOAD JSON ===============
 # json_data = open("model.json").read()
 # print(json_data)
@@ -123,3 +128,10 @@ for device in data.keys():
 # print(RAW_DATA_HEADERS[:3])
 # a = {1: 'a', 2: 'b'}
 # print(a)
+a = [0, 2, 3]
+ptr = 1
+new_data = 1
+a.insert(ptr, new_data)
+print(a)
+a.insert(len(a), 5)
+print(a)

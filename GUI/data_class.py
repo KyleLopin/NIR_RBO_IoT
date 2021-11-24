@@ -53,10 +53,11 @@ class DeviceData:
         self.cpu_temp = []
         self.oryzanol = []
         self.rolling = []
-        self.latest_packet_id_recieved = 0
-        self.next_packet_to_get = 1
-        self.stored_packets = {}
+        self.latest_packet_id_recieved = None
+        self.next_packet_to_get = 0
+        self.lost_pkt_ptr = None  # use this to find missing pkts
         self._mode = "WAIT"
+        self.model_checked = False
 
     def get_mode(self):
         return self._mode
@@ -69,9 +70,10 @@ class DeviceData:
         else:
             print(f"ERROR, incompatible mode {mode}, enter either 'WAIT' or 'ASK'")
 
-    def is_correct_packet(self, pkt):
-        print(f" check packet: {pkt['packet id']} and {self.next_packet_to_get}")
-        if pkt["packet id"] == self.next_packet_to_get:
+    def is_correct_packet(self, pkt_id):
+        print(pkt_id)
+        print(f" check packet: {pkt_id} and {self.next_packet_to_get}")
+        if pkt_id == self.next_packet_to_get:
             return True
         return False
 
@@ -95,6 +97,7 @@ class DeviceData:
         _str = f"Time series: {self.time_series}\n"
         _str += f"CPU Temps: {self.cpu_temp}\n"
         _str += f"Oryzanol concentrations: {self.oryzanol}\n"
+        _str = ""
         return _str
 
 
@@ -102,6 +105,7 @@ class TimeStreamData:
     def __init__(self, graph):
         print("Init Time Stream Data")
         self.master_graph = graph
+        self.connection = None
         self.root_app = graph.root_app  # this is not pretty
         self.devices = {}
         # this is needed to make the datetime in the data
@@ -112,6 +116,9 @@ class TimeStreamData:
         if LOG_RAW_DATA:
             self.save_rawdata_file = f"data/{today}_raw_data.csv"
             self.make_file(self.save_rawdata_file, RAW_DATA_HEADERS)
+
+    def add_connection(self, conn):
+        self.connection = conn
 
     def add_device(self, device):
         logging.info(f"adding device: {device} to data_class")
@@ -131,7 +138,7 @@ class TimeStreamData:
         # print(f"packet keys: {data_pkt.keys()}")
         # print("OryConc" in data_pkt)
         # print(f"got data packet type: {type(data_pkt)}")
-        # print("TODO process for AWS difference")
+        print("TODO process for AWS difference")
         if "Info" in data_pkt:  # is database information
             device = data_pkt["Info"]["device"]
             time = datetime.strptime(data_pkt[TIME_KEYWORD], "%H:%M:%S").time()
@@ -143,35 +150,59 @@ class TimeStreamData:
         position = data_pkt["device"]
         device = global_params.POSITIONS[position]
 
-        # device = data_pkt["Info"]["device"]
-        # if device is not seen yet, add it to device dict
-
-        # print(f"adding data: {device}")
-        # print(self.devices)
         if device not in self.devices:
             self.add_device(device)
         device_data = self.devices[device]  # type: DeviceData
+        # print(device_data)
+        # print(self.devices)
         if "packet id" in data_pkt:
             pkt_id = int(data_pkt["packet id"])
+            print(f"got packet id: {pkt_id}")
         else:
             print(f"No packet id, abondoning data")
             return
 
-        # if not device_data.is_correct_packet(pkt_id):
-        #     print(f"Not correct packet {pkt_id}, looking for {device_data.next_packet_to_get}")
-        #     device_data.stored_packets[pkt_id] = data_pkt
-        #     if device_data.get_mode() == "WAIT":
-        #         device_data.set_mode("ASK")
-        #         print("Asking for data")
-        #         # this is a hack, idk how to make it better
+        if pkt_id in device_data.packet_ids:
+            print(f"Already recieved pkt id: {pkt_id} for {device}")
+            print(f"packet ids: {device_data.packet_ids}")
+            return
+
+        if pkt_id == device_data.next_packet_to_get:
+            # expected packet in sequence with last,
+            # does not mean lost packets are still being asked for
+            print(f"Got correct id: {pkt_id}, {device_data.next_packet_to_get}")
+            device_data.next_packet_to_get += 1
+        elif pkt_id == device_data.lost_pkt_ptr:
+            print(f"got lost packet {pkt_id}, {device_data.lost_pkt_ptr}")
+            # it will insert into right place later on in the method
+            # now check where to move lost_pkt_ptr next
+            
+            # TODO: fill in
+        # TODO: other elif?
+        else:  # out of order packet,
+            print(f"got packet {pkt_id} out of order, {device_data.packet_ids}")
+            device_data.lost_pkt_ptr = device_data.next_packet_to_get
+            device_data.next_packet_to_get = pkt_id
+            if save_data:  # this is not data loaded from file
+                # look for the missing packet and ask for it
+                # (device_data.lost_pkt_ptr)
+
+                print(f"ask for packet: {device_data.lost_pkt_ptr} from device: {device}")
+                self.connection.ask_for_stored_data(device, device_data.lost_pkt_ptr)
+
         #         self.root_app.check_remote_data(device)
         #     return  # don't add data yet
+        if not device_data.lost_pkt_ptr:
+            insert_ptr = len(device_data.time_series)
+        else:
+            insert_ptr = device_data.lost_pkt_ptr
+        print(f"inserting data at point: {insert_ptr}")
 
         if "Raw_data" in data_pkt:
             raw_data = data_pkt["Raw_data"]
             # reference_data = np.array(SENSOR_INFO[position]["Ref Intensities"])
-            # reference_data = SENSOR_INFO[position]["Ref Intensities"]
-            reference_data = SENSOR_INFO["Ref Intensities"]
+            reference_data = SENSOR_INFO[position]["Ref Intensities"]
+            # reference_data = SENSOR_INFO["Ref Intensities"]
             reflectance_data = divide(raw_data, reference_data)
             self.master_graph.update_spectrum(reflectance_data, device)
             # self.master_graph.devices[device].spectrum_frame.update(reflectance_data)
@@ -179,19 +210,19 @@ class TimeStreamData:
             temp = data_pkt["CPUTemp"]
             self.master_graph.update_temp(device, temp)
         if "packet id" in data_pkt:
-            device_data.packet_ids.append(int(data_pkt["packet id"]))
+            device_data.packet_ids.insert(insert_ptr, int(data_pkt["packet id"]))
 
         if "OryConc" in data_pkt:
             time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
             # print(f"time: {time}")
             time = datetime.combine(self.today, time)
-            device_data.time_series.append(time)
-            device_data.oryzanol.append(data_pkt["OryConc"])
+            device_data.time_series.insert(insert_ptr, time)
+            device_data.oryzanol.insert(insert_ptr, data_pkt["OryConc"])
             # calculate rolling average
             last_samples = device_data.oryzanol[-ROLLING_SAMPLES:]
             # print(last_samples)
             roll_avg = mean(last_samples)
-            device_data.rolling.append(roll_avg)
+            device_data.rolling.insert(insert_ptr, roll_avg)
             # print("update master")
             self.master_graph.update(device, device_data.time_series,
                                      device_data.oryzanol,
