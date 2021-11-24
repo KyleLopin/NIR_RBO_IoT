@@ -26,12 +26,12 @@ import option_menu
 DATA_HEADERS = data_class.FILE_HEADER
 today = datetime.today().strftime("%Y-%m-%d")
 print(f"today: {today}")
-logging.basicConfig(filename=f'log/{today}.log',
-                    format="%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
-                    datefmt='%m/%d/%Y %I:%M:%S %p',
-                    filemode='a+',
-                    encoding='utf-8',
-                    level=logging.INFO)
+# logging.basicConfig(filename=f'log/{today}.log',
+#                     format="%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
+#                     datefmt='%m/%d/%Y %I:%M:%S %p',
+#                     filemode='a+',
+#                     encoding='utf-8',
+#                     level=logging.INFO)
 
 
 def get_settings(key):

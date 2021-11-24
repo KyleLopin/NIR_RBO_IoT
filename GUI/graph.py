@@ -38,6 +38,12 @@ COLORS = {"device_1": "orangered",
 json_data2 = open("master_settings.json").read()
 SETTINGS = json.loads(json_data2)
 DISPLAY_ROLLING_MEAN = SETTINGS["Rolling avg"]
+ORY_GRAPH_SIZE = (7, 3)
+SPECTRUM_FRAME = (2.5, 2)
+LABEL_SIZE = 14
+SPECTRUM_LABEL_SIZE = 10
+TICK_SIZE = 10
+SPECTRUM_TICK_SIZE = 8
 
 # def get_settings(position, key):
 #     json_data = open("sensor_settings.json").read()
@@ -49,11 +55,12 @@ DISPLAY_ROLLING_MEAN = SETTINGS["Rolling avg"]
 
 
 class TimeSeriesPlotter(tk.Frame):
-    def __init__(self, parent: tk.Tk, _size=(10, 4)):
+    def __init__(self, parent: tk.Tk, _size=ORY_GRAPH_SIZE):
         # self.data = None
         self.scale = None
         self.root_app = parent
         tk.Frame.__init__(self, master=parent)
+        self.config(bg='white')
         self.scale_index = 7
 
         # routine to make and embed the matplotlib graph
@@ -67,13 +74,13 @@ class TimeSeriesPlotter(tk.Frame):
         # self.canvas.get_tk_widget().pack(side=tk.TOP)
 
 
-        self.axis.set_ylabel("Oryzanol Concentrations", size=18)
+        self.axis.set_ylabel("Oryzanol Concentrations", size=LABEL_SIZE)
         # self.axis.set_ylim([0, 50000)
 
         if self.scale:
             self.draw_xaxis()
-        self.axis.set_xlabel(r'Time', size=18)
-        self.axis.tick_params(axis='both', labelsize=14)
+        self.axis.set_xlabel(r'Time', size=LABEL_SIZE)
+        self.axis.tick_params(axis='both', labelsize=TICK_SIZE)
         # self.axis.set_xticklabels(self.axis.get_xticks(), rotation=45)
         self.axis.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
         plt.tight_layout()
@@ -84,7 +91,7 @@ class TimeSeriesPlotter(tk.Frame):
         self.devices = {}
 
         sensor_frame = tk.Frame(self)
-        temp_frame = tk.Frame(sensor_frame)
+        temp_frame = tk.Frame(sensor_frame, bg="white")
         # sides = [tk.LEFT, tk.LEFT, tk.RIGHT]
         self.temp_labels = {}
         for i, device in enumerate(DEVICES.keys()):
@@ -93,11 +100,12 @@ class TimeSeriesPlotter(tk.Frame):
                                                    parent, device)
             self.devices[device].pack(side=tk.LEFT, fill=tk.X)
 
-            tk.Label(temp_frame, text=f"{DEVICES[device]} temperature:").pack()
+            tk.Label(temp_frame, text=f"{DEVICES[device]} temperature:",
+                     bg="white").pack()
             self.temp_labels[device] = []
             for i in range(2):
                 # self.temp_labels[device][i].set("No Temp read")
-                _l = tk.Label(temp_frame,
+                _l = tk.Label(temp_frame, bg="white",
                               text="No Temp read")
                 _l.pack(side=tk.TOP)
                 self.temp_labels[device].append(_l)
@@ -140,7 +148,7 @@ class TimeSeriesPlotter(tk.Frame):
                            self.data[device][1], "-o", alpha=0.7,
                            label=device, color=COLORS[device])
 
-            self.axis.legend(prop={'size': 18})
+            self.axis.legend(prop={'size': LABEL_SIZE})
         else:
             # print(self.lines[device])
             self.lines[device].set_ydata(conc)
@@ -291,8 +299,9 @@ class TimeSeriesPlotter(tk.Frame):
 
 
 class SpectrumFrame(tk.Frame):
-    def __init__(self, master, _size=(3.5, 4)):
+    def __init__(self, master, _size=SPECTRUM_FRAME):
         tk.Frame.__init__(self, master=master)
+        self.config(bg='white')
         self.data = None
         # routine to make and embed the matplotlib graph
         self.figure = mp.figure.Figure(figsize=_size)
@@ -303,14 +312,15 @@ class SpectrumFrame(tk.Frame):
         self.canvas = FigureCanvasTkAgg(self.figure, master)
         # self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        self.axis.set_ylabel("Reflectance", size=18)
-        self.axis.set_xlabel(r'Wavelenght (nm)', size=18)
+        self.axis.set_ylabel("Reflectance", size=SPECTRUM_LABEL_SIZE)
+        self.axis.set_xlabel(r'Wavelenght (nm)', size=SPECTRUM_LABEL_SIZE)
+        self.axis.tick_params(axis='both', labelsize=SPECTRUM_TICK_SIZE)
         self.axis.set_xlim([1350, 1650])
         self.axis.set_ylim([0, 1.0])
         # plt.gcf().subplots_adjust(bottom=0.45)
         # plt.tight_layout(w_pad=1, h_pad=3)
         self.figure.subplots_adjust(bottom=0.21,
-                                    left=0.17)
+                                    left=0.2)
         wavelengths = [i for i in range(1350, 1651)]
         # print(wavelengths)
         self.line, = self.axis.plot(wavelengths, wavelengths)
@@ -329,6 +339,8 @@ class SpectrumFrame(tk.Frame):
 class SensorInfoFrame(tk.Frame):
     def __init__(self, parent_frame: tk.Frame, master: tk.Tk, _position):
         tk.Frame.__init__(self, master=parent_frame)
+        print("Making info frame")
+        self.config(bg='white')
         self.master = master
         self.spectrum_frame = SpectrumFrame(self)
         # self.spectrum_frame.pack(side=tk.TOP)

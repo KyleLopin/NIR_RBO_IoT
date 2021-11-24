@@ -180,9 +180,9 @@ class TimeStreamData:
             # TODO: fill in
         # TODO: other elif?
         else:  # out of order packet,
-            print(f"got packet {pkt_id} out of order, {device_data.packet_ids}")
+            print(f"got packet {pkt_id} out of order, {device_data.packet_ids}, looking for {device_data.next_packet_to_get}")
             device_data.lost_pkt_ptr = device_data.next_packet_to_get
-            device_data.next_packet_to_get = pkt_id
+            device_data.next_packet_to_get = pkt_id + 1
             if save_data:  # this is not data loaded from file
                 # look for the missing packet and ask for it
                 # (device_data.lost_pkt_ptr)
