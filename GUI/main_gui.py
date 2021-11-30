@@ -14,7 +14,7 @@ import logging
 import sys
 import tkinter as tk
 # local files
-# import aws_connection
+import aws_connection
 import connection
 import data_class
 import global_params
@@ -69,23 +69,25 @@ class RBOGUI(tk.Tk):
             self.connection2 = mock_conn.MockConn(self, data=self.data,
                                                  name="position 3", rate=50)
         else:
-            # self.connection = aws_connection.AWSConnection(self, self.data)
+            self.connection = connection.AWSConnectionMQTT(self, self.data)
+            database = aws_connection.AWSConnectionDB(self, self.data)
+            database.read_today()
             # self.connection = mqtt_local_server.LocalMQTTServer(self, self.data)
-            try:
-                self.connection = connection.LocalMQTTServer(self, self.data)
-            except:
-                self.connection = None
-            if self.connection:
-                print("Using local MQTT server")
-            else:
-                self.connection = connection.AWSConnectionMQTT(self, self.data)
+            # try:
+            #     self.connection = connection.LocalMQTTServer(self, self.data)
+            # except:
+            #     self.connection = None
+            # if self.connection:
+            #     print("Using local MQTT server")
+            # else:
+            #     self.connection = connection.AWSConnectionMQTT(self, self.data)
 
         self.data.add_connection(self.connection)
         self.graph.add_connection(self.connection)
         menubar = option_menu.NIRMenu(self)
         self.config(menu=menubar)
         self.loop = None
-        self.maintain_mqtt_connact()
+        # self.maintain_mqtt_connact()
 
         # self.time_scale_frame = graph.TimeScale(self, self.graph)
         # self.time_scale_frame.pack(side=tk.RIGHT)
@@ -121,7 +123,7 @@ class RBOGUI(tk.Tk):
             time_index = header.index("time")
             device_index = header.index("device")
             ory_index = header.index("OryConc")
-            packet_index = header.index("packet id")
+            packet_index = header.index("packet_id")
             for line in _file.readlines():
                 data = line.split(",")
                 device = data[device_index]
@@ -132,7 +134,7 @@ class RBOGUI(tk.Tk):
                 save_pkt["OryConc"] = float(data[ory_index])
                 # space in this for some reason
                 save_pkt["device"] = data[device_index].lstrip()
-                save_pkt["packet id"] = data[packet_index]
+                save_pkt["packet_id"] = data[packet_index]
                 # send to data_class but don't save the data again
                 # print(f"saving pkt: {save_pkt}")
                 self.data.add_data(save_pkt, save_data=False)
@@ -141,7 +143,7 @@ class RBOGUI(tk.Tk):
                     save_pkt["OryConc"] = float(data[ory_index])
                     # space in this for some reason
                     save_pkt["device"] = data[device_index].lstrip()
-                    save_pkt["packet id"] = data[packet_index]
+                    save_pkt["packet_id"] = data[packet_index]
                     # send to data_class but don't save the data again
                     # print(f"saving pkt: {save_pkt}")
                     self.data.add_data(save_pkt, save_data=False)
@@ -157,6 +159,10 @@ class RBOGUI(tk.Tk):
     def open_file(self, filename):
         # stop reading data if opening another days data
         self.connection.stop_conn()
+        # clear data
+        # TODO: check this
+        self.data = data_class.TimeStreamData(self.graph)
+
         with open(filename, 'r') as _file:
             for i, line in enumerate(_file.readlines()):
                 line_split = [item.strip() for item in line.split(",")]
@@ -165,7 +171,7 @@ class RBOGUI(tk.Tk):
                     time_index = line_split.index("time")
                     device_index = line_split.index("device")
                     ory_index = line_split.index("OryConc")
-                    packet_id_index = line_split.index("packet id")
+                    packet_id_index = line_split.index("packet_id")
                     # print(time_index, device_index, ory_index)
                 else:
                     # position = line_split[device_index]
@@ -173,7 +179,7 @@ class RBOGUI(tk.Tk):
                     data_pkt = {"time": line_split[time_index],
                                 "device": line_split[device_index],
                                 "OryConc": int(line_split[ory_index]),
-                                "packet id": int(line_split[packet_id_index])}
+                                "packet_id": int(line_split[packet_id_index])}
                     # print(data_pkt)
                     self.data.add_data(data_pkt, save_data=False)
 
@@ -187,8 +193,38 @@ class RBOGUI(tk.Tk):
         # TODO: fill in
         topic = "device/hub/status"
         msg = "check"
-        print("MQTT check")
+        # print("MQTT check")
         self.connection.publish(topic, msg)
+
+    def save_data(self, data_type, device):
+        print(f"saving data |{data_type}| for device: {device}")
+        _file = tk.filedialog.asksaveasfile(mode='w', defaultextension=".csv")
+        if _file is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+            return
+
+        device_data = self.data.devices[device]
+        if data_type == "Oryzanol":
+            data_set = [device_data.oryzanol]
+            _file.write(f"time, Oryzanol at {device}\n")
+        elif data_type == "Temperature":
+            print(f"saving temp data")
+            data_set = [device_data.cpu_temp,
+                        device_data.sensor_temp]
+            _file.write(f"time, CPU Temp at {device}, Sensor Temp at {device}\n")
+        print(device_data.time_series)
+        times = device_data.time_series
+        print(device_data.time_series)
+        times = [i.strftime('%H:%M:%S') for i in device_data.time_series]
+        for i, time in enumerate(times):
+            line_items = [time]
+            print(data_set)
+            for item in data_set:
+                print(item)
+                line_items.append(str(item[i]))
+            print(line_items)
+            line = ",".join(line_items)
+            print(line)
+            _file.write(line+'\n')
 
     def main_destroy(self):
         """

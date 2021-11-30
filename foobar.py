@@ -54,10 +54,13 @@ import pandas as pd
 # with open("sensor_settings.json", "w") as _file:
 #     json.dump(data, _file)
 # LOAD JSON ===============
-# json_data = open("model.json").read()
-# print(json_data)
-# json_model = json.loads(json_data)
-# print(json_model)
+json_data = open("sensor_settings.json").read()
+print(json_data)
+
+json_model = json.loads(json_data)
+print(json_model.keys())
+for position in json_model.keys():
+    print(json_model[position].keys())
 # new_model = {}
 # for device in ["position 1", "position 2", "position 3"]:
 #     new_model[device] = json_model
@@ -128,10 +131,25 @@ import pandas as pd
 # print(RAW_DATA_HEADERS[:3])
 # a = {1: 'a', 2: 'b'}
 # print(a)
-a = [0, 2, 3]
-ptr = 1
-new_data = 1
-a.insert(ptr, new_data)
-print(a)
-a.insert(len(a), 5)
-print(a)
+a = [0, 2, 3, 7, 8]
+
+
+# def rolling(_list, avg_pts):
+#     rolling_avg = []
+#     for i in range(1, len(a)+1):
+#         print(f"i = {i}, neg: {i-avg_pts}")
+#
+#         if (i-avg_pts) > 0:
+#             print(_list[i - avg_pts:i])
+#             avg = sum(_list[i - avg_pts:i]) / avg_pts
+#         else:
+#             print(a[:i])
+#             avg = sum(_list[:i]) / i
+#
+#         rolling_avg.append(avg)
+#         print(f"rolling avg: {rolling_avg}, {avg}")
+#     return rolling_avg
+#
+#
+# avg = rolling(a, 3)
+# print(f"avg: {avg}")

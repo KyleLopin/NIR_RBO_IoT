@@ -43,8 +43,22 @@ class NIRMenu(tk.Menu):
                          menu=self.file_menu)
         self.file_menu.add_command(label="Open", underline=1,
                                    command=self.open_file)
+
+        self.file_menu.add_separator()
+        for _type in ["Oryzanol", "Temperature"]:
+            save_menu = tk.Menu(self.file_menu)
+            self.file_menu.add_cascade(label=f"Save {_type} Data", menu=save_menu)
+            for device in global_params.POSITIONS.keys():
+                save_menu.add_command(label=f"Save {device} data",
+                                      command=lambda d=device, t=_type: self.save_data(d, t))
+            self.file_menu.add_separator()
+
         self.file_menu.add_command(label="Exit", underline=1,
                                    command=self.master.main_destroy)
+
+    def save_data(self, position, data_type):
+        print(f"saving device: {position} data")
+        self.master.save_data(data_type, global_params.POSITIONS[position])
 
     def get_filename(self):
         try:
@@ -142,9 +156,9 @@ class ChangeScanParams(tk.Toplevel):
                    textvariable=self.scan_var).pack()
         button_frame = tk.Frame(self)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X)
-        tk.Button(button_frame, text="Submit", 
-                  command=self.submit).pack(side=tk.LEFT)
-        tk.Button(button_frame, text="Exit",
+        tk.Button(button_frame, text="Submit", width=15,
+                  command=lambda d=device: self.submit(d)).pack(side=tk.LEFT)
+        tk.Button(button_frame, text="Exit", width=15,
                   command=self.exit).pack(side=tk.RIGHT)
 
     def get_params(self, device):
@@ -158,8 +172,16 @@ class ChangeScanParams(tk.Toplevel):
         scan_avg = data["scan avgs"]
         return pt_avg, scan_avg
     
-    def submit(self):
+    def submit(self, device):
         print(f"submitting values {self.pt_var.get()} and {self.scan_var.get()}")
+        with open("sensor_settings.json", "r") as _file:
+            data = json.load(_file)
+        pt_avg = self.pt_var.get()
+        if pt_avg > 5 and pt_avg < 100:
+            data[device]["pt scans"] = pt_avg
+        else:
+            messagebox.showerror("Point Avgerage Error",
+                                 "Point scan ")
     
     def exit(self):
         self.destroy()

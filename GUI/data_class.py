@@ -11,6 +11,7 @@ __author__ = "Kyle Vitatus Lopin"
 from datetime import datetime
 import json
 import logging
+import tkinter as tk  # typehinting
 # installed libraries
 # import numpy as np
 # local files
@@ -27,7 +28,7 @@ SETTINGS = json.loads(json_data2)
 DISPLAY_ROLLING_MEAN = SETTINGS["Rolling avg"]
 ROLLING_SAMPLES = SETTINGS["Rolling samples"]
 LOG_RAW_DATA = SETTINGS["log data"]  # option to save raw data
-FILE_HEADER = ["time", "device", "OryConc", "CPUTemp", "SensorTemp", "packet id"]
+FILE_HEADER = ["time", "device", "OryConc", "CPUTemp", "SensorTemp", "packet_id"]
 RAW_DATA_HEADERS = ["time", "device", "OryConc"]
 RAW_DATA_HEADERS.extend([str(i) for i in range(1350, 1651)])
 
@@ -46,14 +47,26 @@ def divide(list1: list, list2: list):
     return result
 
 
+def rolling_avg(_list):
+    rolling_avg = []
+    for i in range(1, len(_list)+1):
+        if (i-ROLLING_SAMPLES) > 0:
+            avg = sum(_list[i-ROLLING_SAMPLES:i]) / ROLLING_SAMPLES
+        else:
+            avg = sum(_list[:i]) / i
+        rolling_avg.append(avg)
+    return rolling_avg
+
+
 class DeviceData:
     def __init__(self):
         self.time_series = []
         self.packet_ids = []
         self.cpu_temp = []
+        self.sensor_temp = []
         self.oryzanol = []
         self.rolling = []
-        self.latest_packet_id_recieved = None
+        self.last_packet_id = -1
         self.next_packet_to_get = 0
         self.lost_pkt_ptr = None  # use this to find missing pkts
         self._mode = "WAIT"
@@ -78,7 +91,7 @@ class DeviceData:
         return False
 
     def store_packet(self, pkt):
-        self.stored_packets[pkt["packet id"]] = pkt
+        self.stored_packets[pkt["packet_id"]] = pkt
 
     def add_data_pt(self, time, cpu, ory):
         self.time_series.append(time)
@@ -106,7 +119,8 @@ class TimeStreamData:
         print("Init Time Stream Data")
         self.master_graph = graph
         self.connection = None
-        self.root_app = graph.root_app  # this is not pretty
+        # this is not pretty
+        self.root_app = graph.root_app  # type: tk.Tk
         self.devices = {}
         # this is needed to make the datetime in the data
         self.today = datetime.today()
@@ -134,71 +148,93 @@ class TimeStreamData:
             print(f"{device} is not on the list, part 2")
 
     def add_data(self, data_pkt: dict, save_data=True):
-        # print(f"got data packet: {data_pkt['packet id']}")
-        # print(f"packet keys: {data_pkt.keys()}")
-        # print("OryConc" in data_pkt)
-        # print(f"got data packet type: {type(data_pkt)}")
-        print("TODO process for AWS difference")
         if "Info" in data_pkt:  # is database information
             device = data_pkt["Info"]["device"]
-            time = datetime.strptime(data_pkt[TIME_KEYWORD], "%H:%M:%S").time()
+            # time = datetime.strptime(data_pkt[TIME_KEYWORD], "%H:%M:%S").time()
+            time = data_pkt[TIME_KEYWORD]
             data_pkt = data_pkt["Info"]
-        # else:  # is mqtt data
-        #     device = data_pkt["device"]
-        #     time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
-
-        position = data_pkt["device"]
+            data_pkt["time"] = time
+        position = data_pkt["device"].strip()
         device = global_params.POSITIONS[position]
-
+        mode = None
+        if "mode" in data_pkt:
+            mode = data_pkt["mode"]
+        print(f"mode packet: {mode}")
         if device not in self.devices:
             self.add_device(device)
         device_data = self.devices[device]  # type: DeviceData
-        # print(device_data)
-        # print(self.devices)
-        if "packet id" in data_pkt:
-            pkt_id = int(data_pkt["packet id"])
-            print(f"got packet id: {pkt_id}")
+        if "packet_id" in data_pkt:
+            pkt_id = int(data_pkt["packet_id"])
+            print(f"got packet_id: {pkt_id}")
         else:
-            print(f"No packet id, abondoning data")
+            # print(f"No packet id, abondoning data")
             return
 
         if pkt_id in device_data.packet_ids:
-            print(f"Already recieved pkt id: {pkt_id} for {device}")
-            print(f"packet ids: {device_data.packet_ids}")
+            # print(f"Already recieved pkt id: {pkt_id} for {device}")
             return
-
-        if pkt_id == device_data.next_packet_to_get:
+        # assume data goes at the end
+        insert_ptr = len(device_data.time_series)
+        if pkt_id == (device_data.last_packet_id + 1):
             # expected packet in sequence with last,
             # does not mean lost packets are still being asked for
-            print(f"Got correct id: {pkt_id}, {device_data.next_packet_to_get}")
-            device_data.next_packet_to_get += 1
-        elif pkt_id == device_data.lost_pkt_ptr:
-            print(f"got lost packet {pkt_id}, {device_data.lost_pkt_ptr}")
-            # it will insert into right place later on in the method
-            # now check where to move lost_pkt_ptr next
-            
-            # TODO: fill in
-        # TODO: other elif?
-        else:  # out of order packet,
-            print(f"got packet {pkt_id} out of order, {device_data.packet_ids}, looking for {device_data.next_packet_to_get}")
-            device_data.lost_pkt_ptr = device_data.next_packet_to_get
-            device_data.next_packet_to_get = pkt_id + 1
-            if save_data:  # this is not data loaded from file
-                # look for the missing packet and ask for it
-                # (device_data.lost_pkt_ptr)
+            # print(f"Got correct id: {pkt_id}, {device_data.next_packet_to_get}")
+            device_data.last_packet_id = pkt_id
+            # insert_ptr is assigned correctly
+        # elif pkt_id == device_data.lost_pkt_ptr:
+        #     # print(f"got lost packet {pkt_id}, {device_data.lost_pkt_ptr}")
+        #     # get the right place to in insert the data
+        #     insert_ptr = self.get_insert_position(device_data, pkt_id)
+        #     # now check where to move lost_pkt_ptr next
+        #     device_data.lost_pkt_ptr = self.find_next_missing_pkts(device_data, pkt_id)
+        #     if save_data:  # this is not data loaded from file
+        #         print(f"ask for packet: {device_data.latest_packet_id+1} from device: {device}")
+        #         self.connection.ask_for_stored_data(device, device_data.latest_packet_id + 1)
 
-                print(f"ask for packet: {device_data.lost_pkt_ptr} from device: {device}")
-                self.connection.ask_for_stored_data(device, device_data.lost_pkt_ptr)
+        elif pkt_id > (device_data.last_packet_id+1):
+            # there is a missing packet, ask for the packet id
+            # print("missed some packets")
+            if save_data and (mode != 'saved'):  # this is not data loaded from file
+                # or the sensor is not currently sending saved data
+                missing_pkt = self.find_next_missing_pkts(device_data, pkt_id)
+                print(f"ask for packet2: {missing_pkt} from device: {device}")
 
-        #         self.root_app.check_remote_data(device)
-        #     return  # don't add data yet
-        if not device_data.lost_pkt_ptr:
-            insert_ptr = len(device_data.time_series)
-        else:
-            insert_ptr = device_data.lost_pkt_ptr
+                self.connection.ask_for_stored_data(device, missing_pkt)
+
+            device_data.last_packet_id = pkt_id
+            # insert_ptr is assigned correctly
+
+        else:  # out of order packet, but not the lost pointer
+            print(f"got earlier packet {pkt_id}, {device_data.lost_pkt_ptr}")
+
+            # get the right place to in insert the data
+            insert_ptr = self.get_insert_position(device_data, pkt_id)
+
+
         print(f"inserting data at point: {insert_ptr}")
 
-        if "Raw_data" in data_pkt:
+        if "OryConc" in data_pkt:
+            device_data.packet_ids.insert(insert_ptr, int(data_pkt["packet_id"]))
+            print(data_pkt)
+            time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
+            # print(f"time: {time}")
+            time = datetime.combine(self.today, time)
+            device_data.time_series.insert(insert_ptr, time)
+            device_data.oryzanol.insert(insert_ptr, float(data_pkt["OryConc"]))
+            # calculate rolling average
+            # last_samples = device_data.oryzanol[-ROLLING_SAMPLES:]
+            # print(last_samples)
+            # roll_avg = mean(last_samples)
+            # device_data.rolling.insert(insert_ptr, roll_avg)
+            print(device_data.oryzanol)
+            device_data.rolling = rolling_avg(device_data.oryzanol)
+            # print("update master")
+
+            self.root_app.after(500, lambda: self.update_graph(device))
+        else:
+            return
+
+        if "Raw_data" in data_pkt and save_data:
             raw_data = data_pkt["Raw_data"]
             # reference_data = np.array(SENSOR_INFO[position]["Ref Intensities"])
             reference_data = SENSOR_INFO[position]["Ref Intensities"]
@@ -206,30 +242,46 @@ class TimeStreamData:
             reflectance_data = divide(raw_data, reference_data)
             self.master_graph.update_spectrum(reflectance_data, device)
             # self.master_graph.devices[device].spectrum_frame.update(reflectance_data)
-        if "CPUTemp" in data_pkt:
+        if "CPUTemp" in data_pkt and save_data:
             temp = data_pkt["CPUTemp"]
-            self.master_graph.update_temp(device, temp)
-        if "packet id" in data_pkt:
-            device_data.packet_ids.insert(insert_ptr, int(data_pkt["packet id"]))
+            device_data.cpu_temp.append(temp)
+            self.master_graph.update_temp(device, temp, "CPU")
+        else:
+            device_data.cpu_temp.append("NaN")
+        if "SensorTemp" in data_pkt and save_data:
+            sensor_temp = data_pkt["SensorTemp"]
+            device_data.sensor_temp.append(sensor_temp)
+            self.master_graph.update_temp(device, sensor_temp, "Sensor")
+        else:
+            device_data.sensor_temp.append("NaN")
 
-        if "OryConc" in data_pkt:
-            time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
-            # print(f"time: {time}")
-            time = datetime.combine(self.today, time)
-            device_data.time_series.insert(insert_ptr, time)
-            device_data.oryzanol.insert(insert_ptr, data_pkt["OryConc"])
-            # calculate rolling average
-            last_samples = device_data.oryzanol[-ROLLING_SAMPLES:]
-            # print(last_samples)
-            roll_avg = mean(last_samples)
-            device_data.rolling.insert(insert_ptr, roll_avg)
-            # print("update master")
-            self.master_graph.update(device, device_data.time_series,
-                                     device_data.oryzanol,
-                                     device_data.rolling)
         if save_data:  # this is live data
             self.save_data(data_pkt)
             self.master_graph.check_in(device)
+
+    def update_graph(self, device):
+        device_data = self.devices[device]  # type: DeviceData
+        self.master_graph.update(device, device_data.time_series,
+                                 device_data.oryzanol,
+                                 device_data.rolling)
+
+    def get_insert_position(self, device_data, pkt_id):
+        for i, item in enumerate(device_data.packet_ids):
+            if item > pkt_id:
+                return i
+
+    def find_next_missing_pkts(self, device_data, last_pkt_id):
+        print(f"finding missing packet: {device_data.packet_ids}")
+        if not device_data.packet_ids:
+            # there are no packet_ids so ask for all
+            missing_pkts = [i for i in range(last_pkt_id)]
+            return missing_pkts
+        # for i, item in enumerate(device_data.packet_ids):
+        missing_pkts = []
+        for i in range(last_pkt_id):
+            if i not in device_data.packet_ids:
+                missing_pkts.append(i)
+        return missing_pkts
 
     def save_data(self, data_pkt):
         # make a string of the data and write it
@@ -262,10 +314,19 @@ class TimeStreamData:
                     _file.write(', '.join(data_list2))
                     _file.write("\n")
 
-    def check_missing_packets(self):
-        for device in self.devices:
-            reads_in = self.devices[device].get_packet_id()
-            print(f"device: {device} has packets: {reads_in}")
+    def check_missing_packets(self, device, pkts_sent):
+        # look for missing packets
+        print(f"looking for missing packets for {device}")
+        device_data = self.devices[device]
+        if device_data.packet_ids:
+            missing_pkt = self.find_next_missing_pkts(self.devices[device], pkts_sent)
+        else:  # first connected, ask for data up till now
+            missing_pkt = [i for i in range(pkts_sent)]
+
+        print(f"missing packet: {missing_pkt}")
+        if missing_pkt:
+            print(f"ask for packet: {missing_pkt}")
+            self.connection.ask_for_stored_data(device, missing_pkt)
 
     def get_missing_packets(self, device):
         print(f"updating packets with remote data: {device}")
@@ -281,13 +342,13 @@ class TimeStreamData:
 
     def check_prev_reads_dep(self, device, num_packets):
         print(f"Updating packets for {num_packets} packets")
-        print(f"{self.devices}")
-        print(f"for device: {device}")
-        print(f"we have packets: {self.devices[device].packet_ids}")
+        # print(f"{self.devices}")
+        # print(f"for device: {device}")
+        # print(f"we have packets: {self.devices[device].packet_ids}")
 
         for i in range(1, num_packets+1):
-            print(f"Comparing {i} in {self.devices[device].packet_ids}")
-            print(f"{type(i)} {type(self.devices[device].packet_ids)} {type(self.devices[device].packet_ids[0])}")
+            # print(f"Comparing {i} in {self.devices[device].packet_ids}")
+            # print(f"{type(i)} {type(self.devices[device].packet_ids)} {type(self.devices[device].packet_ids[0])}")
             if i in self.devices[device].packet_ids:
                 print(f"We already have packet: {i}")
             else:

@@ -54,6 +54,7 @@ class ConnectionClass:
             print("making connection in connection.py")
             self.data = data_class.TimeStreamData(master.graph)
         self.master = master
+        self.loop = None
         self.found_server = False
         self.connected = False
         self.client = mqtt.Client(client_name,
@@ -63,9 +64,11 @@ class ConnectionClass:
         self.client.on_message = self._on_message
 
     def start_conn(self):
-        self.client.loop_start()
+        self.loop = self.master.after(1100, self.start_conn)
+        self.client.loop(timeout=1.0, max_packets=20)
 
     def stop_conn(self):
+        self.master.after_cancel(self.loop)
         self.client.loop_stop()
 
     def _on_message(self, cleint, userdata, msg):
@@ -110,6 +113,8 @@ class ConnectionClass:
                 self.data.update_latest_packet_id(POSITIONS[device],
                                                   packet["packets sent"])
                 self.update_model(POSITIONS[device])
+                if packet["packets sent"] > 0:
+                    self.data.check_missing_packets(POSITIONS[device], packet["packets sent"])
                 # check if all the packets the sensor read
                 # have been sent to this program
                 # ids_to_get = self.data.get_missing_packets(POSITIONS[device])
@@ -145,27 +150,6 @@ class ConnectionClass:
             self.data.devices[device].model_checked = True
             return True
         return False  # no device
-
-    # def ask_for_remote_data(self, device, ids):
-    #     if device not in DEVICES:
-    #         if device in POSITIONS:
-    #             device = POSITIONS[device]
-    #         else:
-    #             raise Exception(f"device: {device} not in list of devices")
-    #     _topic = f"device/{device}/control"
-    #     pkt_size = global_params.REMOTE_ASK_PKT_SIZE
-    #     if len(ids) > pkt_size:
-    #         pkt_to_send = ids[:pkt_size]
-    #         ids = ids[pkt_size:]
-    #         self.master.after(global_params.REMOTE_ASK_TIME,
-    #                           lambda d=device, i=ids: self.ask_for_remote_data(d, i))
-    #     else:
-    #         pkt_to_send = ids
-    #
-    #     _message = f'{{"command": "send packet", "packet numbers": {pkt_to_send}}}'
-    #     # for some reason this is called 1 extra time with an empty list
-    #     if ids:
-    #         self.publish(_topic, _message)
 
     def ask_for_stored_data(self, device, pkt_num):
         _topic = f"device/{device}/control"
@@ -244,6 +228,9 @@ class ConnectionClass:
         pkt = json.dumps(update_pkt)
         self.publish(device_topic, pkt)
         print("Done with model")
+
+    def update_scan_settings(self, device):
+        pass
 
     def get_model_params(self, device):
         device_topic = f"device/{device}/control"

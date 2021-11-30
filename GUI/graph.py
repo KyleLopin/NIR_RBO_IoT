@@ -44,6 +44,8 @@ LABEL_SIZE = 14
 SPECTRUM_LABEL_SIZE = 10
 TICK_SIZE = 10
 SPECTRUM_TICK_SIZE = 8
+ROLL_ALPHA = 1.0
+LINE_ALPHA = 0.2
 
 # def get_settings(position, key):
 #     json_data = open("sensor_settings.json").read()
@@ -142,10 +144,10 @@ class TimeSeriesPlotter(tk.Frame):
             if DISPLAY_ROLLING_MEAN:
                 self.mean_lines[device], = self.axis.plot(self.data[device][0],
                           self.data[device][2], "--",
-                          color=COLORS[device])
+                          color=COLORS[device], alpha=ROLL_ALPHA)
 
             self.lines[device], = self.axis.plot(self.data[device][0],
-                           self.data[device][1], "-o", alpha=0.7,
+                           self.data[device][1], "-o", alpha=LINE_ALPHA,
                            label=device, color=COLORS[device])
 
             self.axis.legend(prop={'size': LABEL_SIZE})
@@ -176,15 +178,20 @@ class TimeSeriesPlotter(tk.Frame):
     def update_spectrum(self, reflectance, device):
         self.devices[device].spectrum_frame.update(reflectance)
 
-    def update_temp(self, device, temp):
-        self.temp_labels[device][0].config(text=f"CPU {temp}\u2103")
+    def update_temp(self, device, temp, sensor="CPU"):
+        if sensor == "Sensor":
+            label_position = 1
+            self.temp_labels[device][1].config(text=f"Sensor {temp}\u2103")
+        else:
+            label_position = 0
+            self.temp_labels[device][0].config(text=f"CPU {temp}\u2103")
         temp = float(temp)  # incase its a string
         if temp > 75:
-            self.temp_labels[device][0].config(bg='red')
+            self.temp_labels[device][label_position].config(bg='red')
         elif temp > 65:
-            self.temp_labels[device][0].config(bg='yellow')
+            self.temp_labels[device][label_position].config(bg='yellow')
         else:
-            self.temp_labels[device][0].config(bg='white')
+            self.temp_labels[device][label_position].config(bg='white')
 
     def check_in(self, device):
         self.devices[device].check_in = True

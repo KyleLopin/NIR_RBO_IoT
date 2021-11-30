@@ -159,7 +159,6 @@ class AWSConnectionMQTT2:
         print("FILL HERE ALSO")
 
 
-
 class AWSConnectionDB:
     def __init__(self, master, data, dynamodb=None):
         self.master = master
@@ -175,20 +174,25 @@ class AWSConnectionDB:
 
     def read_today(self):
         today = datetime.date.today().strftime('%Y-%m-%d')
-        today = "2021-10-24"
+        # today = "2021-10-24"
         print(today, type(today))
         today_data = self.table.query(
             KeyConditionExpression=Key("Date").eq(today)
         )
+
         self.parse_db_data(today_data["Items"])
 
     def parse_db_data(self, data_packet):
         print("parsing data")
         for data_line in data_packet:
             print(data_line)
+            print(type(data_line))
             self.data.add_data(data_line)
         for device in self.data.devices:
             print(device)
             print(self.data.devices[device])
-        print("updating graph", self.master)
-        self.master.graph.update()
+            print("updating graph", self.master)
+            device_data = self.data.devices[device]
+            self.master.graph.update(device, device_data.time_series,
+                                     device_data.oryzanol,
+                                     device_data.rolling)
