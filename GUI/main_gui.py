@@ -19,6 +19,7 @@ import connection
 import data_class
 import global_params
 import graph
+import info_frame
 import mock_conn
 import option_menu
 # import mqtt_local_server
@@ -39,7 +40,7 @@ def get_settings(key):
     json_settings = json.loads(json_data)
     return json_settings[key]
 
-
+DEVICES = list(global_params.DEVICES.keys())
 MOCK_DATA = get_settings("Mock input")
 logging.info(f"Mocking data: {MOCK_DATA}")
 MOCK_DATA = False
@@ -62,21 +63,26 @@ class RBOGUI(tk.Tk):
 
         # self.graph.add_data_class(self.data)
         self.graph.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+        info = info_frame.InfoFrame(self, DEVICES)
+        info.pack(side=tk.BOTTOM)
         # self.status_frame = graph.StatusFrame(self)
         # self.status_frame.pack(side=tk.BOTTOM)
+        self.mqtt_broker_checkin = 0
         if MOCK_DATA:
             self.connection = mock_conn.MockConn(self, data=self.data)
             self.connection2 = mock_conn.MockConn(self, data=self.data,
                                                  name="position 3", rate=50)
         else:
-            self.connection = connection.AWSConnectionMQTT(self, self.data)
-            database = aws_connection.AWSConnectionDB(self, self.data)
-            database.read_today()
+            # self.connection = connection.AWSConnectionMQTT(self, self.data)
+            # database = aws_connection.AWSConnectionDB(self, self.data)
+            # database.read_today()
             # self.connection = mqtt_local_server.LocalMQTTServer(self, self.data)
-            # try:
-            #     self.connection = connection.LocalMQTTServer(self, self.data)
-            # except:
-            #     self.connection = None
+            # self.connection = connection.LocalMQTTServer(self, self.data)
+            try:
+                self.connection = connection.LocalMQTTServer(self, self.data)
+            except Exception as error:
+                print(f"error on mqtt connection of {error}")
+                self.connection = None
             # if self.connection:
             #     print("Using local MQTT server")
             # else:
@@ -87,7 +93,9 @@ class RBOGUI(tk.Tk):
         menubar = option_menu.NIRMenu(self)
         self.config(menu=menubar)
         self.loop = None
-        # self.maintain_mqtt_connact()
+        if not self.connection:
+            pass
+        self.maintain_mqtt_connact()
 
         # self.time_scale_frame = graph.TimeScale(self, self.graph)
         # self.time_scale_frame.pack(side=tk.RIGHT)
@@ -123,6 +131,7 @@ class RBOGUI(tk.Tk):
             time_index = header.index("time")
             device_index = header.index("device")
             ory_index = header.index("OryConc")
+            av_index = header.index("AV")
             packet_index = header.index("packet_id")
             for line in _file.readlines():
                 data = line.split(",")
@@ -130,17 +139,19 @@ class RBOGUI(tk.Tk):
                 # print(data, device)
                 # make a package and send this to the add_data
                 # method in the data_class.TimeStreamData
-                save_pkt = {"time": data[time_index]}
-                save_pkt["OryConc"] = float(data[ory_index])
-                # space in this for some reason
-                save_pkt["device"] = data[device_index].lstrip()
-                save_pkt["packet_id"] = data[packet_index]
-                # send to data_class but don't save the data again
-                # print(f"saving pkt: {save_pkt}")
-                self.data.add_data(save_pkt, save_data=False)
+                # save_pkt = {"time": data[time_index]}
+                # save_pkt["OryConc"] = float(data[ory_index])
+                # save_pkt["AV"] = float(data[av_index])
+                # # space in this for some reason
+                # save_pkt["device"] = data[device_index].lstrip()
+                # save_pkt["packet_id"] = data[packet_index]
+                # # send to data_class but don't save the data again
+                # # print(f"saving pkt: {save_pkt}")
+                # self.data.add_data(save_pkt, save_data=False)
                 try:  # incase file error just pass
                     save_pkt = {"time": data[time_index]}
                     save_pkt["OryConc"] = float(data[ory_index])
+                    save_pkt["AV"] = float(data[av_index])
                     # space in this for some reason
                     save_pkt["device"] = data[device_index].lstrip()
                     save_pkt["packet_id"] = data[packet_index]
@@ -178,7 +189,7 @@ class RBOGUI(tk.Tk):
                     # device = global_params.POSITIONS[position]
                     data_pkt = {"time": line_split[time_index],
                                 "device": line_split[device_index],
-                                "OryConc": int(line_split[ory_index]),
+                                "OryConc": int(float(line_split[ory_index])),
                                 "packet_id": int(line_split[packet_id_index])}
                     # print(data_pkt)
                     self.data.add_data(data_pkt, save_data=False)
@@ -194,6 +205,10 @@ class RBOGUI(tk.Tk):
         topic = "device/hub/status"
         msg = "check"
         # print("MQTT check")
+        self.mqtt_broker_checkin += 1
+        if self.mqtt_broker_checkin >= 4:
+            # the mqtt broker is not responding so try to restart
+            self.connect_mqtt()
         self.connection.publish(topic, msg)
 
     def save_data(self, data_type, device):
@@ -225,6 +240,27 @@ class RBOGUI(tk.Tk):
             line = ",".join(line_items)
             print(line)
             _file.write(line+'\n')
+
+    def change_scan_params(self, device, packet):
+        packet["command"] = "update scan params"
+        self.connection.send_command(device, packet)
+
+    def check_sensor_settings(self, device):
+        with open("sensor_settings.json", "r") as _file:
+            data = json.load(_file)
+        device_data = data[device]
+        packet = {"command": "update signal chain"}
+        packet["signal params"] = device_data
+
+        self.connection.send_command(device, packet)
+        # update the graph so the reflectance data changes
+        # the graph will get the data from sensor_settings.json
+        self.graph.update_signal_processing(device)
+
+    def get_remote_data(self):
+        for device in global_params.DEVICES:
+            self.connection.send_command(device,
+                                         {"command": "send file list"})
 
     def main_destroy(self):
         """

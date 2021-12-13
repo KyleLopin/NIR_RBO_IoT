@@ -16,6 +16,7 @@ import tkinter as tk
 # installed libraries
 import paho.mqtt.client as mqtt
 # local files
+import check_saved_data
 import data_class
 import global_params
 
@@ -23,7 +24,9 @@ import global_params
 DEVICES = global_params.DEVICES.keys()
 POSITIONS = global_params.POSITIONS
 MODEL_KEYS = ["Constant", "Coeffs", "Ref Intensities",
-              "Dark Intensities", "pt scans", "scan avgs"]
+              "Dark Intensities"]
+SETTINGS_KEYS = ["use_snv", "use_sg", "sg_window",
+                 "sg_polyorder", "sg_deriv"]
 
 # MQTT_SERVER = "localhost"
 # MQTT_SERVER = "192.168.1.52"
@@ -64,8 +67,9 @@ class ConnectionClass:
         self.client.on_message = self._on_message
 
     def start_conn(self):
-        self.loop = self.master.after(1100, self.start_conn)
-        self.client.loop(timeout=1.0, max_packets=20)
+        self.loop = self.master.after(2100, self.start_conn)
+        # print(f"loop client: {self.connected}")
+        self.client.loop(timeout=2.0, max_packets=40)
 
     def stop_conn(self):
         self.master.after_cancel(self.loop)
@@ -77,6 +81,8 @@ class ConnectionClass:
         print(msg.payload)
         device = msg.topic.split("/")[1]
         print(f"message from device: {device}")
+        if "hub" not in device:
+            self.master.graph.check_in(device)
         if 'data' in msg.topic:
 
             data_str = msg.payload.decode('utf8')
@@ -85,7 +91,7 @@ class ConnectionClass:
             self.parse_mqtt_data(ast.literal_eval(data_str))
         elif 'hub' in msg.topic:
             # mqtt hub is still connected
-            return True
+            self.master.mqtt_broker_checkin = 0
 
         elif 'status' in msg.topic:
             # JSON converts False to false and True to true, fix that here
@@ -97,6 +103,11 @@ class ConnectionClass:
             print(f"msg dict: {msg_dict}")
             if "status" in msg_dict:
                 self.parse_mqtt_status(msg_dict)
+            if 'saved files' in msg_dict:
+                data_needed = check_saved_data.get_missing_data_in_files(device, msg_dict["saved files"])
+                pkt = {"command": "send old data",
+                       "data needed": data_needed}
+                self.send_command(device, pkt)
 
     def parse_mqtt_status(self, packet):
         print("parse mqtt status ")
@@ -112,7 +123,7 @@ class ConnectionClass:
                 # device is in the position format now
                 self.data.update_latest_packet_id(POSITIONS[device],
                                                   packet["packets sent"])
-                self.update_model(POSITIONS[device])
+                # self.update_model(POSITIONS[device])
                 if packet["packets sent"] > 0:
                     self.data.check_missing_packets(POSITIONS[device], packet["packets sent"])
                 # check if all the packets the sensor read
@@ -131,7 +142,31 @@ class ConnectionClass:
                     print("Error checking model, please reload")
 
     def check_model(self, position, sensor_model):
-        model_the_same = False
+        # get the stored model
+        with open("models.json", "r") as _file:
+            data = json.load(_file)
+        data = data[position]
+        print(f"Master model params:")
+        for key in MODEL_KEYS:
+            print(key)
+            print(data[key])
+            if data[key] != sensor_model[key]:
+                return False
+        # if all data and sensor models are the same,
+        # everything is all good, hopefully
+        device = global_params.POSITIONS[position]
+        print("Model correct")
+        if device in self.data.devices:
+            self.data.devices[device].model_checked = True
+            return True
+        return False  # no device
+
+    def ask_for_model(self):
+        _topic = f"device/{device}/control"
+        _message = '{"command": "send model"}'
+        self.publish(_topic, _message)
+
+    def check_settings(self, position, sensor_model):
         # get the stored model
         with open("sensor_settings.json", "r") as _file:
             data = json.load(_file)
@@ -150,6 +185,11 @@ class ConnectionClass:
             self.data.devices[device].model_checked = True
             return True
         return False  # no device
+
+    def ask_for_settings(self):
+        _topic = f"device/{device}/control"
+        _message = '{"command": "send sensor settings"}'
+        self.publish(_topic, _message)
 
     def ask_for_stored_data(self, device, pkt_num):
         _topic = f"device/{device}/control"
@@ -175,7 +215,7 @@ class ConnectionClass:
         self.connected = True
         if not self.found_server:
             self.check_connections()
-            self.update_models()
+            # self.update_models()
 
         self.found_server = True
         client.subscribe(MQTT_PATH_LISTEN)
@@ -215,7 +255,7 @@ class ConnectionClass:
             self.update_model(position)
 
     def update_model(self, device):
-        with open("sensor_settings.json", "r") as _file:
+        with open("models.json", "r") as _file:
             data = json.load(_file)
         if device not in data:
             return
@@ -229,8 +269,13 @@ class ConnectionClass:
         self.publish(device_topic, pkt)
         print("Done with model")
 
-    def update_scan_settings(self, device):
-        pass
+    def send_command(self, device, payload):
+        device_topic = f"device/{device}/control"
+        if device in global_params.POSITIONS:
+            device_topic = f"device/{global_params.POSITIONS[device]}/control"
+        if type(payload) is dict:
+            payload = json.dumps(payload)
+        self.publish(device_topic, payload)
 
     def get_model_params(self, device):
         device_topic = f"device/{device}/control"
@@ -248,7 +293,7 @@ class ConnectionClass:
 class LocalMQTTServer(ConnectionClass):
     def __init__(self, master: tk.Tk, data=None):
         ConnectionClass.__init__(self, master,
-                                 "MQTT Hub", data=data)
+                                 "GUI MQTT", data=data)
         self.client.username_pw_set(username=MQTT_USERNAME,
                                     password=MQTT_PASSWORD)
         if os.uname() == "posix":
@@ -260,7 +305,7 @@ class LocalMQTTServer(ConnectionClass):
 
         result = self.client.connect(mqtt_server_name, 1883, 60)
         print(f"mqtt result: {result}")
-        self.client.subscribe(CONTROL_TOPIC)  # hack for now
+        # self.client.subscribe(CONTROL_TOPIC)  # hack for now
 
         self.start_conn()
 
@@ -280,7 +325,7 @@ class AWSConnectionMQTT(ConnectionClass):
                                      port=AWS_MQTT_PORT,
                                      keepalive=60)
         print(f"mqtt result={result}")
-        self.client.subscribe(CONTROL_TOPIC)  # hack for now
+        # self.client.subscribe(CONTROL_TOPIC)  # hack for now
         self.start_conn()
 
 

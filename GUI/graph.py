@@ -22,7 +22,6 @@ import data_class
 import global_params
 plt.style.use("seaborn")
 
-
 SENSOR_OFFLINE = 0
 SENSOR_NOT_READING = 1
 SENSOR_READING = 2
@@ -34,10 +33,19 @@ TIME_OPTIONS = ["0:15", "0:30", "0:45",
 DEVICES = global_params.DEVICES
 COLORS = {"device_1": "orangered",
           "device_2": "mediumseagreen",
-          "device_3": "darkblue"}
+          "device_3": "darkblue",
+          "AV": "slategray"}
 json_data2 = open("master_settings.json").read()
 SETTINGS = json.loads(json_data2)
 DISPLAY_ROLLING_MEAN = SETTINGS["Rolling avg"]
+
+
+def get_sensor_settings(key):
+    json_data = open("sensor_settings.json").read()
+    json_settings = json.loads(json_data)
+    return json_settings[key]
+
+
 ORY_GRAPH_SIZE = (7, 3)
 SPECTRUM_FRAME = (2.5, 2)
 LABEL_SIZE = 14
@@ -69,14 +77,21 @@ class TimeSeriesPlotter(tk.Frame):
         self.figure = mp.figure.Figure(figsize=_size)
         self.figure.subplots_adjust(bottom=0.2)
         self.axis = self.figure.add_subplot(111)
+        # self.av_axis = self.figure.add_subplot(111, sharex=self.axis)
+        self.av_axis = self.axis.twinx()
 
         # self.figure.set_facecolor('white')
         self.canvas = FigureCanvasTkAgg(self.figure, self)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         # self.canvas.get_tk_widget().pack(side=tk.TOP)
 
-
         self.axis.set_ylabel("Oryzanol Concentrations", size=LABEL_SIZE)
+        self.av_axis.set_ylabel("Acid Value", size=LABEL_SIZE)
+        # self.av_axis.set_label_position("right")
+        # self.av_axis.tick_right()
+        self.av_axis.tick_params(axis='both', labelright=True, labelleft=False,
+                                 labelbottom=False,
+                                 left=False, right=True, color=COLORS["AV"])
         # self.axis.set_ylim([0, 50000)
 
         if self.scale:
@@ -89,6 +104,8 @@ class TimeSeriesPlotter(tk.Frame):
         self.canvas.draw()
         self.lines = {}
         self.mean_lines = {}
+        self.av_line = None
+        self.av_roll = None
         self.data = {}
         self.devices = {}
 
@@ -139,16 +156,25 @@ class TimeSeriesPlotter(tk.Frame):
         else:
             self.axis.autoscale()
 
-    def update(self, device, time, conc, rolling):
+    def update(self, device, time, conc, rolling, av=None, av_roll=None):
+        print(f"update graph: av_line {self.av_line}, av: {av}")
         if device not in self.lines:
             if DISPLAY_ROLLING_MEAN:
                 self.mean_lines[device], = self.axis.plot(self.data[device][0],
                           self.data[device][2], "--",
                           color=COLORS[device], alpha=ROLL_ALPHA)
+                # if av_roll:
+                #     self.av_mean, = self.av_axis.plot(time,
+                #           av_roll, "--",
+                #           color=COLORS[device], alpha=ROLL_ALPHA)
 
             self.lines[device], = self.axis.plot(self.data[device][0],
                            self.data[device][1], "-o", alpha=LINE_ALPHA,
                            label=device, color=COLORS[device])
+            # if av:
+            #     self.av_line, = self.av_axis.plot(time,
+            #                av, "-o", alpha=LINE_ALPHA,
+            #                label=device, color=COLORS[device])
 
             self.axis.legend(prop={'size': LABEL_SIZE})
         else:
@@ -157,8 +183,46 @@ class TimeSeriesPlotter(tk.Frame):
             self.lines[device].set_xdata(time)
             self.mean_lines[device].set_ydata(rolling)
             self.mean_lines[device].set_xdata(time)
+            print(f"shapes: {len(time)}, {len(conc)}, {len(rolling)}")
+        # deal with Acid Values here
+
+        if av:
+            if not self.av_line:
+                print(f"shapes av {len(time)}, {len(av)}")
+                self.av_line, = self.av_axis.plot(time,
+                                                  av, "-o",
+                                                  alpha=LINE_ALPHA,
+                                                  label=device,
+                                                  color=COLORS["AV"])
+                self.av_mean, = self.av_axis.plot(time,
+                                                  av_roll, "--",
+                                                  color=COLORS["AV"],
+                                                  alpha=ROLL_ALPHA)
+                self.axis.legend(prop={'size': LABEL_SIZE})
+
+            else:
+                self.av_line.set_ydata(av)
+                self.av_line.set_xdata(time)
+                self.av_mean.set_ydata(av_roll)
+                self.av_mean.set_xdata(time)
 
         # print("graph updating ", self.zoomed)
+        if not self.zoomed:
+            # print("axis relim")
+            self.axis.relim()
+            self.axis.autoscale()
+            self.av_axis.relim()
+            self.av_axis.autoscale()
+        self.canvas.draw()
+
+    def update_roll(self, device, rolling):
+        if device not in self.lines:
+            if DISPLAY_ROLLING_MEAN:
+                self.mean_lines[device], = self.axis.plot(self.data[device][0],
+                          self.data[device][2], "--",
+                          color=COLORS[device], alpha=ROLL_ALPHA)
+        else:
+            self.mean_lines[device].set_ydata(rolling)
         if not self.zoomed:
             # print("axis relim")
             self.axis.relim()
@@ -181,10 +245,10 @@ class TimeSeriesPlotter(tk.Frame):
     def update_temp(self, device, temp, sensor="CPU"):
         if sensor == "Sensor":
             label_position = 1
-            self.temp_labels[device][1].config(text=f"Sensor {temp}\u2103")
+            self.temp_labels[device][1].config(text=f"Sensor {temp:.1f}\u2103")
         else:
             label_position = 0
-            self.temp_labels[device][0].config(text=f"CPU {temp}\u2103")
+            self.temp_labels[device][0].config(text=f"CPU {temp:.1f}\u2103")
         temp = float(temp)  # incase its a string
         if temp > 75:
             self.temp_labels[device][label_position].config(bg='red')
@@ -193,8 +257,13 @@ class TimeSeriesPlotter(tk.Frame):
         else:
             self.temp_labels[device][label_position].config(bg='white')
 
+    def update_signal_processing(self, device):
+        if device in self.devices:
+            self.devices[device].set_signalling_settings()
+
     def check_in(self, device):
-        self.devices[device].check_in = True
+        if device in self.devices:
+            self.devices[device].check_in = True
 
     def _on_release(self, event):
         print(f"release: {event}")
@@ -306,10 +375,13 @@ class TimeSeriesPlotter(tk.Frame):
 
 
 class SpectrumFrame(tk.Frame):
-    def __init__(self, master, _size=SPECTRUM_FRAME):
+    def __init__(self, master, device, _size=SPECTRUM_FRAME):
         tk.Frame.__init__(self, master=master)
         self.config(bg='white')
         self.data = None
+        self.device = device
+        self.signal_processing = get_sensor_settings(device)
+
         # routine to make and embed the matplotlib graph
         self.figure = mp.figure.Figure(figsize=_size)
         self.axis = self.figure.add_subplot(111)
@@ -331,31 +403,129 @@ class SpectrumFrame(tk.Frame):
         wavelengths = [i for i in range(1350, 1651)]
         # print(wavelengths)
         self.line, = self.axis.plot(wavelengths, wavelengths)
+        self.line2, = self.axis.plot(wavelengths, wavelengths, color='red')
         self.canvas.draw()
+
+    def set_signalling_settings(self):
+        self.signal_processing = get_sensor_settings(self.device)
 
     def update(self, reflectance_data):
         # print("updating spectrum data")
         # print(reflectance_data)
         self.line.set_ydata(reflectance_data)
+        if self.signal_processing['use_sg']:
+            window = self.signal_processing['sg_window']
+            order = self.signal_processing['sg_polyorder']
+            deriv = self.signal_processing['sg_deriv']
+            processed_data = self.savitzky_golay(np.array(reflectance_data),
+                                                 window,
+                                                 order, deriv)
+            if self.line2:
+                self.line2.set_ydata(processed_data)
+                self.line2.set_alpha(1.0)
+                self.line.set_alpha(0.6)
+            else:
+                wavelengths = [i for i in range(1350, 1651)]
+                self.line2, = self.axis.plot(wavelengths, processed_data, color='red')
+                self.line.set_alpha(0.6)
+        elif self.line2:
+            self.line2.set_alpha(0.0)
+
         # print(self.line.get_xydata())
         # wavelengths = [i for i in range(1350, 1651)]
         # self.axis.plot(wavelengths, reflectance_data)
         self.canvas.draw()
 
+    # from scipy cookbook
+    def savitzky_golay(self, y, window_size, order, deriv=0, rate=1):
+        r"""Smooth (and optionally differentiate) data with a Savitzky-Golay filter.
+        The Savitzky-Golay filter removes high frequency noise from data.
+        It has the advantage of preserving the original shape and
+        features of the signal better than other types of filtering
+        approaches, such as moving averages techniques.
+        Parameters
+        ----------
+        y : array_like, shape (N,)
+            the values of the time history of the signal.
+        window_size : int
+            the length of the window. Must be an odd integer number.
+        order : int
+            the order of the polynomial used in the filtering.
+            Must be less then `window_size` - 1.
+        deriv: int
+            the order of the derivative to compute (default = 0 means only smoothing)
+        Returns
+        -------
+        ys : ndarray, shape (N)
+            the smoothed signal (or it's n-th derivative).
+        Notes
+        -----
+        The Savitzky-Golay is a type of low-pass filter, particularly
+        suited for smoothing noisy data. The main idea behind this
+        approach is to make for each point a least-square fit with a
+        polynomial of high order over a odd-sized window centered at
+        the point.
+        Examples
+        --------
+        t = np.linspace(-4, 4, 500)
+        y = np.exp( -t**2 ) + np.random.normal(0, 0.05, t.shape)
+        ysg = savitzky_golay(y, window_size=31, order=4)
+        import matplotlib.pyplot as plt
+        plt.plot(t, y, label='Noisy signal')
+        plt.plot(t, np.exp(-t**2), 'k', lw=1.5, label='Original signal')
+        plt.plot(t, ysg, 'r', label='Filtered signal')
+        plt.legend()
+        plt.show()
+        References
+        ----------
+        .. [1] A. Savitzky, M. J. E. Golay, Smoothing and Differentiation of
+           Data by Simplified Least Squares Procedures. Analytical
+           Chemistry, 1964, 36 (8), pp 1627-1639.
+        .. [2] Numerical Recipes 3rd Edition: The Art of Scientific Computing
+           W.H. Press, S.A. Teukolsky, W.T. Vetterling, B.P. Flannery
+           Cambridge University Press ISBN-13: 9780521880688
+        """
+        import numpy as np
+        from math import factorial
+
+        try:
+            window_size = np.abs(np.int(window_size))
+            order = np.abs(np.int(order))
+        except ValueError as msg:
+            raise ValueError("window_size and order have to be of type int")
+        if window_size % 2 != 1 or window_size < 1:
+            raise TypeError("window_size size must be a positive odd number")
+        if window_size < order + 2:
+            raise TypeError("window_size is too small for the polynomials order")
+        order_range = range(order + 1)
+        half_window = (window_size - 1) // 2
+        # precompute coefficients
+        b = np.mat([[k ** i for i in order_range] for k in range(-half_window, half_window + 1)])
+        m = np.linalg.pinv(b).A[deriv] * rate ** deriv * factorial(deriv)
+        # pad the signal at the extremes with
+        # values taken from the signal itself
+        firstvals = y[0] - np.abs(y[1:half_window + 1][::-1] - y[0])
+        lastvals = y[-1] + np.abs(y[-half_window - 1:-1][::-1] - y[-1])
+        y = np.concatenate((firstvals, y, lastvals))
+        return np.convolve(m[::-1], y, mode='valid')
+
 
 class SensorInfoFrame(tk.Frame):
-    def __init__(self, parent_frame: tk.Frame, master: tk.Tk, _position):
+    def __init__(self, parent_frame: tk.Frame, master: tk.Tk, _device):
         tk.Frame.__init__(self, master=parent_frame)
         print("Making info frame")
         self.config(bg='white')
         self.master = master
-        self.spectrum_frame = SpectrumFrame(self)
+        print(f"position: {_device}")
+        position = global_params.DEVICES[_device]
+        self.spectrum_frame = SpectrumFrame(self, position)
+
         # self.spectrum_frame.pack(side=tk.TOP)
 
         self.conn = None
         self.check_in = False
-        self.position = _position
-        self.status_label = tk.Label(self, text=f"{_position} offline",
+        self.position = _device
+        self.status_label = tk.Label(self, text=f"{_device} offline",
                                      bg='red')
         self.status_label.pack(side=tk.BOTTOM)
         self.status_button = tk.Button(self, text="Check Status",
@@ -387,7 +557,7 @@ class SensorInfoFrame(tk.Frame):
         print(f"Updating device status| check in: {self.check_in}")
         # self.thread = threading.Timer(65, self.update_online_status_labels)
         # self.thread.start()
-        self.loop = self.master.after(65000, self.update_online_status_labels)
+        self.loop = self.master.after(15000, self.update_online_status_labels)
         if not self.check_in:
             self.position_offline()
         else:  # check in is set True if it recieves data
@@ -398,7 +568,7 @@ class SensorInfoFrame(tk.Frame):
         self.check_in = True
 
     def position_online(self, running: bool):
-        print(f"postion online status for {self.position}")
+        print(f"postion online status for {self.position}, running: {running}")
         if running:
             self.status_label.config(text=f"{DEVICES[self.position]} online\nsensor running",
                                      bg="green")
@@ -416,13 +586,17 @@ class SensorInfoFrame(tk.Frame):
         # print("postion offline status")
         self.status_label.config(text=f"{DEVICES[self.position]} offline\n ",
                                  bg="red")
+        self.status_button.config(text="Check Status")
         self.sensor_state = SENSOR_OFFLINE
 
     def add_connection(self, device_connection):
         self.conn = device_connection
         # send message to the device
         # to see who is online when the gui starts
-        self.conn.check_connection(self.position)
+        try:
+            self.conn.check_connection(self.position)
+        except:
+            print("No connections yet")
 
     def destory(self):
         print("destroying graph")
@@ -513,46 +687,46 @@ class SensorInfoFrame(tk.Frame):
 #         # print("postion offline status")
 #         self.status_labels[position].config(text=f"{position} offline\n ", bg="red")
 #         self.sensor_states[position] = SENSOR_OFFLINE
-
-
-class TimeScale(tk.Frame):
-    def __init__(self, master, graph):
-        tk.Frame.__init__(self, master=master)
-        self.current_state = "Full"
-        self.graph = graph
-        radio_frame = tk.Frame(self)
-        tk.Label(radio_frame, text="Display Time options:").pack(side=tk.TOP)
-        self.time_option = tk.StringVar(value=self.current_state)
-        r1 = tk.Radiobutton(radio_frame, text="Full day of data",
-                            value="Full", variable=self.time_option,
-                            command=self.resize_to_scale)
-        r2 = tk.Radiobutton(radio_frame, text="Enter time range",
-                            value="Range", variable=self.time_option,
-                            command=self.resize_to_scale)
-        r1.pack(side=tk.LEFT)
-        r2.pack(side=tk.LEFT)
-        radio_frame.pack(side=tk.TOP)
-
-        self.time_var = tk.StringVar(value="0:30")
-        spinbox = tk.Spinbox(self, values=TIME_OPTIONS,
-                             textvariable=self.time_var,
-                             wrap=True, width=10,
-                             command=self.resize_to_scale)
-        spinbox.pack(side=tk.RIGHT)
-
-    def resize_to_scale(self):
-        print("resizing", self.current_state, self.time_option.get())
-        print(self.current_state != self.time_option)
-        # change the time scale
-        if self.time_option.get() == "Full":
-            print("Set full day scale")
-            self.graph.scale = None
-        elif self.time_option.get() == "Range":
-            print("Set scale of", self.time_var.get())
-            # self.graph.scale = self.time_var.get()
-            t = datetime.strptime(self.time_var.get(),
-                                  "%H:%M")
-            self.graph.scale = timedelta(hours=t.hour,
-                                         minutes=t.minute)
-        self.graph.update()
-
+#
+#
+# class TimeScale(tk.Frame):
+#     def __init__(self, master, graph):
+#         tk.Frame.__init__(self, master=master)
+#         self.current_state = "Full"
+#         self.graph = graph
+#         radio_frame = tk.Frame(self)
+#         tk.Label(radio_frame, text="Display Time options:").pack(side=tk.TOP)
+#         self.time_option = tk.StringVar(value=self.current_state)
+#         r1 = tk.Radiobutton(radio_frame, text="Full day of data",
+#                             value="Full", variable=self.time_option,
+#                             command=self.resize_to_scale)
+#         r2 = tk.Radiobutton(radio_frame, text="Enter time range",
+#                             value="Range", variable=self.time_option,
+#                             command=self.resize_to_scale)
+#         r1.pack(side=tk.LEFT)
+#         r2.pack(side=tk.LEFT)
+#         radio_frame.pack(side=tk.TOP)
+#
+#         self.time_var = tk.StringVar(value="0:30")
+#         spinbox = tk.Spinbox(self, values=TIME_OPTIONS,
+#                              textvariable=self.time_var,
+#                              wrap=True, width=10,
+#                              command=self.resize_to_scale)
+#         spinbox.pack(side=tk.RIGHT)
+#
+#     def resize_to_scale(self):
+#         print("resizing", self.current_state, self.time_option.get())
+#         print(self.current_state != self.time_option)
+#         # change the time scale
+#         if self.time_option.get() == "Full":
+#             print("Set full day scale")
+#             self.graph.scale = None
+#         elif self.time_option.get() == "Range":
+#             print("Set scale of", self.time_var.get())
+#             # self.graph.scale = self.time_var.get()
+#             t = datetime.strptime(self.time_var.get(),
+#                                   "%H:%M")
+#             self.graph.scale = timedelta(hours=t.hour,
+#                                          minutes=t.minute)
+#         self.graph.update()
+#

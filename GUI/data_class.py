@@ -13,22 +13,29 @@ import json
 import logging
 import tkinter as tk  # typehinting
 # installed libraries
-# import numpy as np
+
 # local files
 import global_params
+import model
 
 TIME_KEYWORD = "Datetime"
 CPUTEMP_KEYWORD = "CPUTemp"
 ORYZONAL_KEYWORD = "OryConc"
 json_data = open("sensor_settings.json").read()
-
 SENSOR_INFO = json.loads(json_data)
+DEVICES = list(global_params.DEVICES.keys())
+
+json_data = open("models.json").read()
+MODEL_INFO = json.loads(json_data)
+USE_LOCAL_MODEL = True
+
+
 json_data2 = open("master_settings.json").read()
 SETTINGS = json.loads(json_data2)
 DISPLAY_ROLLING_MEAN = SETTINGS["Rolling avg"]
-ROLLING_SAMPLES = SETTINGS["Rolling samples"]
+rolling_samples = SETTINGS["Rolling samples"]
 LOG_RAW_DATA = SETTINGS["log data"]  # option to save raw data
-FILE_HEADER = ["time", "device", "OryConc", "CPUTemp", "SensorTemp", "packet_id"]
+FILE_HEADER = ["time", "device", "OryConc", "AV", "CPUTemp", "SensorTemp", "packet_id"]
 RAW_DATA_HEADERS = ["time", "device", "OryConc"]
 RAW_DATA_HEADERS.extend([str(i) for i in range(1350, 1651)])
 
@@ -43,19 +50,19 @@ def mean(_list: list):
 def divide(list1: list, list2: list):
     result = []
     for num1, num2 in zip(list1, list2):
-        result.append(int(num1)/int(num2))
+        result.append(float(num1)/float(num2))
     return result
 
 
-def rolling_avg(_list):
-    rolling_avg = []
-    for i in range(1, len(_list)+1):
-        if (i-ROLLING_SAMPLES) > 0:
-            avg = sum(_list[i-ROLLING_SAMPLES:i]) / ROLLING_SAMPLES
-        else:
-            avg = sum(_list[:i]) / i
-        rolling_avg.append(avg)
-    return rolling_avg
+# def rolling_avg_old(_list):
+#     rolling_avg = []
+#     for i in range(1, len(_list)+1):
+#         if (i - rolling_samples) > 0:
+#             avg = sum(_list[i - rolling_samples:i]) / rolling_samples
+#         else:
+#             avg = sum(_list[:i]) / i
+#         rolling_avg.append(avg)
+#     return rolling_avg
 
 
 class DeviceData:
@@ -65,12 +72,15 @@ class DeviceData:
         self.cpu_temp = []
         self.sensor_temp = []
         self.oryzanol = []
+        self.av = []
         self.rolling = []
+        self.av_rolling = []
         self.last_packet_id = -1
         self.next_packet_to_get = 0
         self.lost_pkt_ptr = None  # use this to find missing pkts
         self._mode = "WAIT"
         self.model_checked = False
+        self.settings_checked = False
 
     def get_mode(self):
         return self._mode
@@ -119,9 +129,13 @@ class TimeStreamData:
         print("Init Time Stream Data")
         self.master_graph = graph
         self.connection = None
+        devices = DEVICES[:]
+        devices.append("AV")
+        self.models = model.Models(devices)
         # this is not pretty
         self.root_app = graph.root_app  # type: tk.Tk
         self.devices = {}
+        self.rolling_samples = rolling_samples
         # this is needed to make the datetime in the data
         self.today = datetime.today()
         today = datetime.today().strftime("%Y-%m-%d")
@@ -148,6 +162,7 @@ class TimeStreamData:
             print(f"{device} is not on the list, part 2")
 
     def add_data(self, data_pkt: dict, save_data=True):
+
         if "Info" in data_pkt:  # is database information
             device = data_pkt["Info"]["device"]
             # time = datetime.strptime(data_pkt[TIME_KEYWORD], "%H:%M:%S").time()
@@ -156,6 +171,7 @@ class TimeStreamData:
             data_pkt["time"] = time
         position = data_pkt["device"].strip()
         device = global_params.POSITIONS[position]
+        print(f"got data from device: {device}")
         mode = None
         if "mode" in data_pkt:
             mode = data_pkt["mode"]
@@ -181,19 +197,8 @@ class TimeStreamData:
             # print(f"Got correct id: {pkt_id}, {device_data.next_packet_to_get}")
             device_data.last_packet_id = pkt_id
             # insert_ptr is assigned correctly
-        # elif pkt_id == device_data.lost_pkt_ptr:
-        #     # print(f"got lost packet {pkt_id}, {device_data.lost_pkt_ptr}")
-        #     # get the right place to in insert the data
-        #     insert_ptr = self.get_insert_position(device_data, pkt_id)
-        #     # now check where to move lost_pkt_ptr next
-        #     device_data.lost_pkt_ptr = self.find_next_missing_pkts(device_data, pkt_id)
-        #     if save_data:  # this is not data loaded from file
-        #         print(f"ask for packet: {device_data.latest_packet_id+1} from device: {device}")
-        #         self.connection.ask_for_stored_data(device, device_data.latest_packet_id + 1)
-
         elif pkt_id > (device_data.last_packet_id+1):
             # there is a missing packet, ask for the packet id
-            # print("missed some packets")
             if save_data and (mode != 'saved'):  # this is not data loaded from file
                 # or the sensor is not currently sending saved data
                 missing_pkt = self.find_next_missing_pkts(device_data, pkt_id)
@@ -212,6 +217,20 @@ class TimeStreamData:
 
 
         print(f"inserting data at point: {insert_ptr}")
+        av_value = None
+
+        if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
+            raw_data = [float(x) for x in data_pkt["Raw_data"]]
+            print(f"device = {device}")
+            ory_conc = self.models.fit(raw_data, device)
+            data_pkt["OryConc"] = ory_conc
+            if device == "device_1":
+                print(f"making AV values, len av_values: {len(device_data.av)}, {len(device_data.time_series)}")
+
+                av_value = self.models.fit(raw_data, "AV")
+                data_pkt["AV"] = av_value
+                # self.root_app.after(500, lambda: self.update_graph(device))
+            # don't update here, the OryConc part will
 
         if "OryConc" in data_pkt:
             device_data.packet_ids.insert(insert_ptr, int(data_pkt["packet_id"]))
@@ -221,13 +240,12 @@ class TimeStreamData:
             time = datetime.combine(self.today, time)
             device_data.time_series.insert(insert_ptr, time)
             device_data.oryzanol.insert(insert_ptr, float(data_pkt["OryConc"]))
-            # calculate rolling average
-            # last_samples = device_data.oryzanol[-ROLLING_SAMPLES:]
-            # print(last_samples)
-            # roll_avg = mean(last_samples)
-            # device_data.rolling.insert(insert_ptr, roll_avg)
+            if av_value:
+                device_data.av.insert(insert_ptr, av_value)
+                device_data.av_rolling = self.rolling_avg(device_data.av)
+
             print(device_data.oryzanol)
-            device_data.rolling = rolling_avg(device_data.oryzanol)
+            device_data.rolling = self.rolling_avg(device_data.oryzanol)
             # print("update master")
 
             self.root_app.after(500, lambda: self.update_graph(device))
@@ -235,9 +253,10 @@ class TimeStreamData:
             return
 
         if "Raw_data" in data_pkt and save_data:
+            # TODO: this can be combined with above
             raw_data = data_pkt["Raw_data"]
             # reference_data = np.array(SENSOR_INFO[position]["Ref Intensities"])
-            reference_data = SENSOR_INFO[position]["Ref Intensities"]
+            reference_data = MODEL_INFO[position]["Ref Intensities"]
             # reference_data = SENSOR_INFO["Ref Intensities"]
             reflectance_data = divide(raw_data, reference_data)
             self.master_graph.update_spectrum(reflectance_data, device)
@@ -256,14 +275,44 @@ class TimeStreamData:
             device_data.sensor_temp.append("NaN")
 
         if save_data:  # this is live data
+            # TODO: update the ory conc value in this
             self.save_data(data_pkt)
             self.master_graph.check_in(device)
 
+    def update_rolling_samples(self, n_samples):
+        try:
+            self.rolling_samples = int(n_samples)
+        except TypeError:  # just pass if something weird was passed in
+            return
+        for device in self.devices:
+            device_data = self.devices[device]
+            new_rolling_data = self.rolling_avg(device_data.oryzanol)
+            self.master_graph.update_roll(device, new_rolling_data)
+
+    def rolling_avg(self, _list):
+        _rolling_avg = []
+        for i in range(1, len(_list) + 1):
+            if (i - self.rolling_samples) > 0:
+                avg = sum(_list[i - self.rolling_samples:i]) / rolling_samples
+            else:
+                avg = sum(_list[:i]) / i
+            _rolling_avg.append(avg)
+        return _rolling_avg
+
     def update_graph(self, device):
+        print("updating graph")
         device_data = self.devices[device]  # type: DeviceData
-        self.master_graph.update(device, device_data.time_series,
-                                 device_data.oryzanol,
-                                 device_data.rolling)
+        if device == "device_1":
+            print("updating device 1")
+            self.master_graph.update(device, device_data.time_series,
+                                     device_data.oryzanol,
+                                     device_data.rolling,
+                                     device_data.av,
+                                     device_data.av_rolling)
+        else:
+            self.master_graph.update(device, device_data.time_series,
+                                     device_data.oryzanol,
+                                     device_data.rolling)
 
     def get_insert_position(self, device_data, pkt_id):
         for i, item in enumerate(device_data.packet_ids):
