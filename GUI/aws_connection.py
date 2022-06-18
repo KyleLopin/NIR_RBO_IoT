@@ -170,7 +170,29 @@ class AWSConnectionDB:
                                       aws_secret_access_key="xUC2zZVwvdHzcAcbIIivlbBuFr1jKnX0soU1+RLn",
                                       region_name="ap-southeast-1")
 
-        self.table = dynamodb.Table('RBO_info_table')
+        self.info_table = dynamodb.Table('RBO_info_table')
+        self.raw_table = dynamodb.Table('RBO_raw_table')
+
+    def send_data(self, device, date, time, info_data, raw_data):
+        print(raw_data)
+        print(info_data)
+        response = self.raw_table.put_item(
+            Item={
+                "Date": date,
+                "Device": device,
+                "time": time,
+                "Data": raw_data
+                })
+        print(f"first response: {response}")
+        if raw_data:
+            response = self.info_table.put_item(
+                Item={
+                    "Date": date,
+                    "Device": device,
+                    "time": time,
+                    "info": info_data
+                })
+            print(f"second response: {response}")
 
     def read_today(self):
         today = datetime.date.today().strftime('%Y-%m-%d')

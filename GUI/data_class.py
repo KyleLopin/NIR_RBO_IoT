@@ -11,33 +11,47 @@ __author__ = "Kyle Vitatus Lopin"
 from datetime import datetime
 import json
 import logging
+import os
 import tkinter as tk  # typehinting
+
 # installed libraries
+import numpy as np
 
 # local files
 import global_params
 import model
 
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
 TIME_KEYWORD = "Datetime"
 CPUTEMP_KEYWORD = "CPUTemp"
 ORYZONAL_KEYWORD = "OryConc"
-json_data = open("sensor_settings.json").read()
+json_data = open(os.path.join(__location__, "sensor_settings.json")).read()
 SENSOR_INFO = json.loads(json_data)
 DEVICES = list(global_params.DEVICES.keys())
-
-json_data = open("models.json").read()
+# 
+json_data = open(os.path.join(__location__, "new_models.json")).read()
 MODEL_INFO = json.loads(json_data)
 USE_LOCAL_MODEL = True
-
-
-json_data2 = open("master_settings.json").read()
+# 
+# 
+json_data2 = open(os.path.join(__location__, "master_settings.json")).read()
 SETTINGS = json.loads(json_data2)
 DISPLAY_ROLLING_MEAN = SETTINGS["Rolling avg"]
 rolling_samples = SETTINGS["Rolling samples"]
 LOG_RAW_DATA = SETTINGS["log data"]  # option to save raw data
 FILE_HEADER = ["time", "device", "OryConc", "AV", "CPUTemp", "SensorTemp", "packet_id"]
-RAW_DATA_HEADERS = ["time", "device", "OryConc"]
+
+DATA_PACKET_KEYS = ["time", "device", "CPUTemp", "SensorTemp", "packet_id"]
+SAVED_DATA_KEYS = DATA_PACKET_KEYS.extend(["AV", "OryConc"])
+RAW_DATA_HEADERS = ["time", "device", "packet_id"]
 RAW_DATA_HEADERS.extend([str(i) for i in range(1350, 1651)])
+
+
+indices = dict()
+for header in FILE_HEADER:
+    indices[header] = FILE_HEADER.index(header)
 
 
 def mean(_list: list):
@@ -54,15 +68,138 @@ def divide(list1: list, list2: list):
     return result
 
 
-# def rolling_avg_old(_list):
-#     rolling_avg = []
-#     for i in range(1, len(_list)+1):
-#         if (i - rolling_samples) > 0:
-#             avg = sum(_list[i - rolling_samples:i]) / rolling_samples
+# def insert_pkt_into_np_array(data_pkt, np_array, models):
+#     sort_idx = check_pkt_id_get_insert_idx(data_pkt,
+#                                            np_array["packet_id"])
+
+
+
+# def check_pkt_id_get_insert_idx(data_pkt, _pkt_id):
+#     """ Check if the packet id is unique and
+#     return the index to insert the data in the array if so """
+#     if "packet_id" in data_pkt:
+#         _pkt_id = int(data_pkt["packet_id"])
+#         print(f"got packet_id: {_pkt_id}")
+#     else:
+#         # print(f"No packet id, abondoning data")
+#         return None
+#
+#     _sort_idx = np.searchsorted(self.packet_ids, _pkt_id)
+#     if packet_ids[_sort_idx] == _pkt_id:
+#         print(f"Already recieved pkt id: {_pkt_id} for {device}")
+#         return None  # this packet id is already present
+#     return _sort_idx
+
+
+# def convert_data_dict_to_np_row(data_pkt, models):
+#     position = data_pkt["device"]
+#     device = global_params.POSITIONS[position]
+#     if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
+#         raw_data = [float(x) for x in data_pkt["Raw_data"]]
+#         data_pkt["OryConc"] = models.fit(raw_data, device)
+#         if "position 1" in data_pkt["device"]:
+#             data_pkt["AV"] = models.fit(raw_data, "AV")
+#
+#     for temp in ["CPUTemp", "SensorTemp"]:
+#         if temp in data_pkt:
+#             data_pkt[temp] = float(data_pkt[temp])
 #         else:
-#             avg = sum(_list[:i]) / i
-#         rolling_avg.append(avg)
-#     return rolling_avg
+#             data_pkt[temp] = np.nan
+#     print(f"time: {data_pkt['time']}")
+#     # np_time = np.datetime64(data_pkt['time'])
+#     time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
+#     time = datetime.combine(datetime.today(), time)
+#     print(f"combine time: {time}")
+#     np_time = np.datetime64(time, 's')
+#     print(np_time)
+#     np_row = np.array([np_time,
+#                        data_pkt["device"],
+#                        data_pkt["OryConc"],
+#                        data_pkt["AV"],
+#                        data_pkt["CPUTemp"],
+#                        data_pkt["SensorTemp"],
+#                        data_pkt["packet_id"]])
+#     print(np_row)
+#     return np_row
+
+
+class DataPacket:
+    def __init__(self, date=None, time=None, packet_id=None,
+                 device=None, raw_data=None, ory_conc=None,
+                 av_value=None, cpu_temp=None,
+                 sensor_temp=None, mode=None, packet=None,
+                 data_line=None):
+        self.packet = dict()
+        self.raw_data = raw_data
+        self.date = date
+        self.cpu_temp = cpu_temp
+        self.sensor_temp = sensor_temp
+        self.packet = packet
+        self.ory_conc = ory_conc
+        self.av = av_value
+        self.mode = mode
+
+        if packet:
+            self.packet = packet
+            self.time = packet["time"]
+            self.device = packet["device"]
+            self.date = packet["date"]
+            self.packet_id = packet["packet_id"]
+            if "Raw_data" in packet:
+                self.raw_data = packet["Raw_data"]
+            if "CPUTemp" in packet:
+                self.cpu_temp = packet["CPUTemp"]
+            if "SensorTemp" in packet:
+                self.sensor_temp = packet["SensorTemp"]
+            print(f"packet made1")
+        elif packet_id is not None:  # can be 0 and legit
+            self.time = time
+            self.device = device
+            self.packet_id = packet_id
+            # the rest are assigned above
+            self.make_packet()
+            print(f"packet made2")
+        elif data_line:
+            self.parse_line(data_line)
+            print(f"packet made3")
+        else:
+            raise Exception("Wrong input to DataClass")
+
+    def make_packet(self):
+        self.packet = {"time": self.time,
+                       "packet_id": self.packet_id,
+                       "device": self.device,
+                       "mode": self.mode,
+                       "OryConc": self.ory_conc,
+                       "AV": self.av,
+                       "CPUTemp": self.cpu_temp,
+                       "SensorTemp": self.sensor_temp}
+        print(f"packet111: {self.packet}")
+        # this packet is send through json so truncate the raw data floats
+        # TODO: is this worth it?
+
+    def parse_line(self, csv_line):
+        print(f"parsing line {csv_line}")
+        split_line = csv_line.split(",")
+        print(f"line split: {split_line}")
+        self.packet_id = int(split_line[indices["packet_id"]])
+        self.time = split_line[indices["time"]].lstrip()
+        self.device = split_line[indices["device"]]
+        self.ory_conc = float(split_line[indices["OryConc"]])
+        self.av = float(split_line[indices["AV"]])
+        self.cpu_temp = float(split_line[indices["CPUTemp"]])
+        self.sensor_temp = float(split_line[indices["SensorTemp"]])
+        self.raw_data = split_line[len(FILE_HEADER):]
+        self.mode = "saved"
+        self.make_packet()
+
+    def get_csv_line(self):
+        _list = []
+        for item in FILE_HEADER[:len(FILE_HEADER)]:
+            _list.append(self.packet[item])
+        _list.extend(self.packet["Raw_data"])
+        csv_str = str(_list).replace("'", "").replace("[", "").replace("]", "\n").encode('utf-8')
+        return csv_str
 
 
 class DeviceData:
@@ -72,9 +209,13 @@ class DeviceData:
         self.cpu_temp = []
         self.sensor_temp = []
         self.oryzanol = []
+        self.ory_rolling = []
         self.av = []
-        self.rolling = []
         self.av_rolling = []
+
+        self.today = datetime.today()
+        self.rolling_samples = rolling_samples
+        self.ask_for_missing_packets = False
         self.last_packet_id = -1
         self.next_packet_to_get = 0
         self.lost_pkt_ptr = None  # use this to find missing pkts
@@ -82,67 +223,111 @@ class DeviceData:
         self.model_checked = False
         self.settings_checked = False
 
-    def get_mode(self):
-        return self._mode
+    def add_data_pkt(self, data_pkt, models):
+        print("add data pkt")
+        insert_idx = self.check_pkt_id_get_insert_idx(data_pkt)
+        if insert_idx == None:
+            return  # no pkt id, or one already received
+        # print(f"sort idx: {insert_idx}, len packet id: {len(self.packet_ids)}")
+        if "AV" in data_pkt:
+            self.av.insert(insert_idx, float(data_pkt["AV"]))
+            print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
 
-    def set_mode(self, mode):
-        if mode == "WAIT":
-            self._mode = mode
-        elif mode == "ASK":
-            self._mode = mode
+        position = data_pkt["device"].strip()
+        device = global_params.POSITIONS[position]
+
+        if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
+            raw_data = [float(x) for x in data_pkt["Raw_data"]]
+            ory_conc = models.fit(raw_data, device)
+            data_pkt["OryConc"] = ory_conc
+            info_pkt = [ory_conc]
+            if position == "position 1":
+                print(f"making AV values, len av_values: {len(self.av)}, {len(self.time_series)}")
+
+                av_value = models.fit(raw_data, "AV")
+                data_pkt["AV"] = av_value
+                # print(insert_idx, av_value, device_data.av)
+                self.av.insert(insert_idx, av_value)
+                self.av_rolling = self.rolling_avg(self.av)
+                info_pkt.append(av_value)
+
+        if "CPUTemp" in data_pkt:
+            temp = float(data_pkt["CPUTemp"])
+            self.cpu_temp.insert(insert_idx, temp)
         else:
-            print(f"ERROR, incompatible mode {mode}, enter either 'WAIT' or 'ASK'")
+            self.cpu_temp.insert(insert_idx, np.nan)
+        if "SensorTemp" in data_pkt:
+            sensor_temp = float(data_pkt["SensorTemp"])
+            self.sensor_temp.insert(insert_idx, sensor_temp)
+        else:
+            self.sensor_temp.insert(insert_idx, np.nan)
 
-    def is_correct_packet(self, pkt_id):
-        print(pkt_id)
-        print(f" check packet: {pkt_id} and {self.next_packet_to_get}")
-        if pkt_id == self.next_packet_to_get:
-            return True
-        return False
+        self.packet_ids.insert(insert_idx, int(data_pkt["packet_id"]))
+        time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
+        time = datetime.combine(self.today, time)
+        self.time_series.insert(insert_idx, time)
+        self.oryzanol.insert(insert_idx, float(data_pkt["OryConc"]))
+        self.ory_rolling = self.rolling_avg(self.oryzanol)
 
-    def store_packet(self, pkt):
-        self.stored_packets[pkt["packet_id"]] = pkt
+        # we need to also send info so the TimeSeries data holder
+        # can tell the master the data that
 
-    def add_data_pt(self, time, cpu, ory):
-        self.time_series.append(time)
-        self.cpu_temp.append(cpu)
-        self.oryzanol.append(ory)
+        return data_pkt, info_pkt
 
-    def add_data_list(self, time_list, cpu_list, ory_list):
-        self.time_series.extend(time_list)
-        self.cpu_temp.extend(cpu_list)
-        self.oryzanol.extend(ory_list)
+    def check_pkt_id_get_insert_idx(self, data_pkt):
+        """ Check if the packet id is unique and
+        return the index to insert the data in the array if so """
+        # print(f"check pkt: {data_pkt}")
+        if "packet_id" in data_pkt:
+            _pkt_id = int(data_pkt["packet_id"])
+            print(f"got packet_id--: {_pkt_id}")
+        else:
+            # print(f"No packet id, abondoning data")
+            return None
+        _sort_idx = np.searchsorted(np.array(self.packet_ids), _pkt_id)
+#         print(f"{_pkt_id in self.packet_ids}, pkt ids: {self.packet_ids}")
+        if _pkt_id in self.packet_ids:
+            print(f"Already recieved pkt id: {_pkt_id}")
+            return None  # this packet id is already present
+        # print(f"sort idx: {_sort_idx}, len packet id: {len(self.packet_ids)}")
+        mode = None
+        if "mode" in data_pkt:
+            mode = data_pkt["mode"]
+#         print(f"ask for check: mode: {mode}, sort idx: {_sort_idx}, pkt: {_pkt_id}")
+        if mode != "saved" and (_sort_idx < _pkt_id):
+            self.ask_for_missing_packets = True
+        return _sort_idx
 
-    def get_packet_ids(self):
-        return self.packet_id
-
-    def __str__(self):
-        _str = f"Time series: {self.time_series}\n"
-        _str += f"CPU Temps: {self.cpu_temp}\n"
-        _str += f"Oryzanol concentrations: {self.oryzanol}\n"
-        _str = ""
-        return _str
+    def rolling_avg(self, _list):
+        _rolling_avg = []
+        for i in range(1, len(_list) + 1):
+            if (i - self.rolling_samples) > 0:
+                avg = sum(_list[i - self.rolling_samples:i]) / rolling_samples
+            else:
+                avg = sum(_list[:i]) / i
+            _rolling_avg.append(avg)
+        return _rolling_avg
 
 
 class TimeStreamData:
-    def __init__(self, graph):
+    def __init__(self, root_app):
         print("Init Time Stream Data")
-        self.master_graph = graph
+        self.master_graph = root_app.graphs
         self.connection = None
         devices = DEVICES[:]
         devices.append("AV")
         self.models = model.Models(devices)
         # this is not pretty
-        self.root_app = graph.root_app  # type: tk.Tk
-        self.devices = {}
-        self.rolling_samples = rolling_samples
+        self.root_app = root_app  # type: tk.Tk
+        self.update_after = None
+        self.positions = {}
         # this is needed to make the datetime in the data
         self.today = datetime.today()
         today = datetime.today().strftime("%Y-%m-%d")
-        self.save_file = f"data/{today}.csv"
+        self.save_file = os.path.join(__location__, f"data/{today}.csv")
         self.make_file(self.save_file, FILE_HEADER)
         if LOG_RAW_DATA:
-            self.save_rawdata_file = f"data/{today}_raw_data.csv"
+            self.save_rawdata_file = os.path.join(__location__, f"data/{today}_raw_data.csv")
             self.make_file(self.save_rawdata_file, RAW_DATA_HEADERS)
 
     def add_connection(self, conn):
@@ -150,14 +335,15 @@ class TimeStreamData:
 
     def add_device(self, device):
         logging.info(f"adding device: {device} to data_class")
-        if device not in global_params.DEVICES:
+        print(f"adding device: {device} to data_class")
+        if device not in global_params.POSITIONS:
             # see if it was send as position and fix it
             try:
-                device = global_params.POSITIONS[device]
+                device = global_params.DEVICES[device]
             except Exception as error:
                 print(f"{device} is not on the list")
-        if device in global_params.DEVICES:
-            self.devices[device] = DeviceData()
+        if device in global_params.POSITIONS:
+            self.positions[device] = DeviceData()
         else:
             print(f"{device} is not on the list, part 2")
 
@@ -171,161 +357,134 @@ class TimeStreamData:
             data_pkt["time"] = time
         position = data_pkt["device"].strip()
         device = global_params.POSITIONS[position]
-        print(f"got data from device: {device}")
-        mode = None
-        if "mode" in data_pkt:
-            mode = data_pkt["mode"]
-        print(f"mode packet: {mode}")
-        if device not in self.devices:
-            self.add_device(device)
-        device_data = self.devices[device]  # type: DeviceData
-        if "packet_id" in data_pkt:
-            pkt_id = int(data_pkt["packet_id"])
-            print(f"got packet_id: {pkt_id}")
-        else:
-            # print(f"No packet id, abondoning data")
+        # print(f"got data from device: {device}")
+        # print(data_pkt)
+        if position not in self.positions:
+            self.add_device(position)
+        # print(f"======: pkt {device_data.last_packet_id}")
+        # print(self.positions)
+        device_data = self.positions[position]  # type: DeviceData
+
+        # insert adding device data here ========
+        data_pkt, info_pkt = device_data.add_data_pkt(data_pkt, self.models)
+        if not data_pkt:
             return
 
-        if pkt_id in device_data.packet_ids:
-            # print(f"Already recieved pkt id: {pkt_id} for {device}")
-            return
-        # assume data goes at the end
-        insert_ptr = len(device_data.time_series)
-        if pkt_id == (device_data.last_packet_id + 1):
-            # expected packet in sequence with last,
-            # does not mean lost packets are still being asked for
-            # print(f"Got correct id: {pkt_id}, {device_data.next_packet_to_get}")
-            device_data.last_packet_id = pkt_id
-            # insert_ptr is assigned correctly
-        elif pkt_id > (device_data.last_packet_id+1):
-            # there is a missing packet, ask for the packet id
-            if save_data and (mode != 'saved'):  # this is not data loaded from file
-                # or the sensor is not currently sending saved data
-                missing_pkt = self.find_next_missing_pkts(device_data, pkt_id)
-                print(f"ask for packet2: {missing_pkt} from device: {device}")
+        if data_pkt and device_data.ask_for_missing_packets:  # this is not data loaded from file
+            # or the sensor is not currently sending saved data
+            missing_pkt = self.find_next_missing_pkts(device_data, int(data_pkt["packet_id"]))
+            print(f"ask for packet2: {missing_pkt} from device: {device}")
 
-                self.connection.ask_for_stored_data(device, missing_pkt)
+            self.connection.ask_for_stored_data(device, missing_pkt)
+            device_data.ask_for_missing_packets = False
 
-            device_data.last_packet_id = pkt_id
-            # insert_ptr is assigned correctly
-
-        else:  # out of order packet, but not the lost pointer
-            print(f"got earlier packet {pkt_id}, {device_data.lost_pkt_ptr}")
-
-            # get the right place to in insert the data
-            insert_ptr = self.get_insert_position(device_data, pkt_id)
-
-
-        print(f"inserting data at point: {insert_ptr}")
-        av_value = None
-
-        if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
-            raw_data = [float(x) for x in data_pkt["Raw_data"]]
-            print(f"device = {device}")
-            ory_conc = self.models.fit(raw_data, device)
-            data_pkt["OryConc"] = ory_conc
-            if device == "device_1":
-                print(f"making AV values, len av_values: {len(device_data.av)}, {len(device_data.time_series)}")
-
-                av_value = self.models.fit(raw_data, "AV")
-                data_pkt["AV"] = av_value
-                # self.root_app.after(500, lambda: self.update_graph(device))
-            # don't update here, the OryConc part will
-
-        if "OryConc" in data_pkt:
-            device_data.packet_ids.insert(insert_ptr, int(data_pkt["packet_id"]))
-            print(data_pkt)
-            time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
-            # print(f"time: {time}")
-            time = datetime.combine(self.today, time)
-            device_data.time_series.insert(insert_ptr, time)
-            device_data.oryzanol.insert(insert_ptr, float(data_pkt["OryConc"]))
-            if av_value:
-                device_data.av.insert(insert_ptr, av_value)
-                device_data.av_rolling = self.rolling_avg(device_data.av)
-
-            print(device_data.oryzanol)
-            device_data.rolling = self.rolling_avg(device_data.oryzanol)
-            # print("update master")
-
-            self.root_app.after(500, lambda: self.update_graph(device))
-        else:
-            return
+        # if "AV" in data_pkt:  # keep this before the USE_LOCAL_MODEL if condition
+        #     # saved data will have this
+        #     device_data.av.insert(insert_idx, float(data_pkt["AV"]))
+        #     device_data.av = np.concatenate((device_data.av[:insert_idx], [float(data_pkt["AV"])], device_data.av[insert_idx:]))
+        #
+        # if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
+        #     raw_data = [float(x) for x in data_pkt["Raw_data"]]
+        #     ory_conc = self.models.fit(raw_data, device)
+        #     data_pkt["OryConc"] = ory_conc
+        #     if device == "device_1":
+        #         # print(f"making AV values, len av_values: {len(device_data.av)}, {len(device_data.time_series)}")
+        #
+        #         av_value = self.models.fit(raw_data, "AV")
+        #         data_pkt["AV"] = av_value
+        #         # print(insert_idx, av_value, device_data.av)
+        #         np.insert(device_data.av, insert_idx, av_value)
+        #         device_data.av_rolling = self.rolling_avg(device_data.av)
 
         if "Raw_data" in data_pkt and save_data:
-            # TODO: this can be combined with above
+            self.master_graph.update_spectrum(data_pkt["Raw_data"], device)
             raw_data = data_pkt["Raw_data"]
-            # reference_data = np.array(SENSOR_INFO[position]["Ref Intensities"])
-            reference_data = MODEL_INFO[position]["Ref Intensities"]
-            # reference_data = SENSOR_INFO["Ref Intensities"]
-            reflectance_data = divide(raw_data, reference_data)
-            self.master_graph.update_spectrum(reflectance_data, device)
-            # self.master_graph.devices[device].spectrum_frame.update(reflectance_data)
-        if "CPUTemp" in data_pkt and save_data:
-            temp = data_pkt["CPUTemp"]
-            device_data.cpu_temp.append(temp)
-            self.master_graph.update_temp(device, temp, "CPU")
         else:
-            device_data.cpu_temp.append("NaN")
-        if "SensorTemp" in data_pkt and save_data:
-            sensor_temp = data_pkt["SensorTemp"]
-            device_data.sensor_temp.append(sensor_temp)
-            self.master_graph.update_temp(device, sensor_temp, "Sensor")
-        else:
-            device_data.sensor_temp.append("NaN")
+            raw_data = None
+        # if "CPUTemp" in data_pkt:
+        #     temp = float(data_pkt["CPUTemp"])
+        #     np.insert(device_data.cpu_temp, insert_idx, temp)
+        # else:
+        #     np.insert(device_data.cpu_temp, insert_idx, np.nan)
+        # if "SensorTemp" in data_pkt:
+        #     sensor_temp = float(data_pkt["SensorTemp"])
+        #     np.insert(device_data.sensor_temp, insert_idx, sensor_temp)
+        # else:
+        #     np.insert(device_data.sensor_temp, insert_idx, np.nan)
+
+        # device_data.packet_ids.insert(insert_idx, int(data_pkt["packet_id"]))
+        # time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
+        # time = datetime.combine(self.today, time)
+        # device_data.time_series.insert(insert_idx, time)
+        # device_data.oryzanol.insert(insert_idx, float(data_pkt["OryConc"]))
+        # device_data.rolling = self.rolling_avg(device_data.oryzanol)
+
+        # np.insert(device_data.packet_ids, insert_idx, int(data_pkt["packet_id"]))
+        # time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
+        # time = datetime.combine(self.today, time)
+        # # print(device_data.time_series, insert_idx, time)
+        # print("inserting into time series")
+        # print(len(device_data.time_series))
+        # # np.insert(device_data.time_series, insert_idx, np.datetime64(time))
+        # device_data.time_series.insert(insert_idx, time)
+        # print(len(device_data.time_series))
+        # # print("plok", device_data.time_series, insert_idx, time)
+        # np.insert(device_data.oryzanol, insert_idx, float(data_pkt["OryConc"]))
+        # device_data.rolling = self.rolling_avg(device_data.oryzanol)
+
+        if not self.update_after:
+            self.update_after = self.root_app.after(500, lambda: self.update_graph(position))
 
         if save_data:  # this is live data
             # TODO: update the ory conc value in this
+            print(f"saving data: {data_pkt['packet_id']}")
             self.save_data(data_pkt)
-            self.master_graph.check_in(device)
+            self.root_app.info.check_in(position)
+            # self.master_graph.update_temp(device, temp, "CPU")
+            self.root_app.info.update_temp(data_pkt, position)
+            # basify the data
+            print(data_pkt)
+            self.root_app.send_data_to_db(device, data_pkt["date"],
+                                          data_pkt["time",
+                                          info_pkt, raw_data])
 
     def update_rolling_samples(self, n_samples):
         try:
             self.rolling_samples = int(n_samples)
         except TypeError:  # just pass if something weird was passed in
             return
-        for device in self.devices:
-            device_data = self.devices[device]
+        for device in self.positions:
+            device_data = self.positions[device]
             new_rolling_data = self.rolling_avg(device_data.oryzanol)
             self.master_graph.update_roll(device, new_rolling_data)
 
-    def rolling_avg(self, _list):
-        _rolling_avg = []
-        for i in range(1, len(_list) + 1):
-            if (i - self.rolling_samples) > 0:
-                avg = sum(_list[i - self.rolling_samples:i]) / rolling_samples
-            else:
-                avg = sum(_list[:i]) / i
-            _rolling_avg.append(avg)
-        return _rolling_avg
+    # def rolling_avg(self, _list):
+    #     _rolling_avg = []
+    #     for i in range(1, len(_list) + 1):
+    #         if (i - self.rolling_samples) > 0:
+    #             avg = sum(_list[i - self.rolling_samples:i]) / rolling_samples
+    #         else:
+    #             avg = sum(_list[:i]) / i
+    #         _rolling_avg.append(avg)
+    #     return _rolling_avg
 
-    def update_graph(self, device):
-        print("updating graph")
-        device_data = self.devices[device]  # type: DeviceData
-        if device == "device_1":
-            print("updating device 1")
-            self.master_graph.update(device, device_data.time_series,
-                                     device_data.oryzanol,
-                                     device_data.rolling,
-                                     device_data.av,
-                                     device_data.av_rolling)
-        else:
-            self.master_graph.update(device, device_data.time_series,
-                                     device_data.oryzanol,
-                                     device_data.rolling)
+    def update_graph(self, position):
+        print("Updating graph")
+        device_data = self.positions[position]  # type: DeviceData
+        self.master_graph.update(position, device_data)
+        self.update_after = None
 
-    def get_insert_position(self, device_data, pkt_id):
+    def get_insert_position_depr(self, device_data, pkt_id):
         for i, item in enumerate(device_data.packet_ids):
+            # print(f"i: {i}, item: {item}, pkt_id: {pkt_id}")
             if item > pkt_id:
+                print(f"returning {i}")
                 return i
+        print(f"returning {i} at the end")
+        return i
 
     def find_next_missing_pkts(self, device_data, last_pkt_id):
-        print(f"finding missing packet: {device_data.packet_ids}")
-        if not device_data.packet_ids:
-            # there are no packet_ids so ask for all
-            missing_pkts = [i for i in range(last_pkt_id)]
-            return missing_pkts
-        # for i, item in enumerate(device_data.packet_ids):
+        print(f"finding missing packet: {device_data.packet_ids}, {len(device_data.packet_ids)}")
         missing_pkts = []
         for i in range(last_pkt_id):
             if i not in device_data.packet_ids:
@@ -335,9 +494,14 @@ class TimeStreamData:
     def save_data(self, data_pkt):
         # make a string of the data and write it
         data_list = []
+        # print(f"saving packet: {data_pkt}")
         for item in FILE_HEADER:
             if item in data_pkt:
-                data_list.append(str(data_pkt[item]))
+                if type(data_pkt[item]) is float:
+                    data_list.append(f"{data_pkt[item]:.1f}")
+                else:
+                    data_list.append(f"{data_pkt[item]}")
+
             else:
                 data_list.append("")
         data_list.append('\n')
@@ -361,14 +525,18 @@ class TimeStreamData:
                 # print("WRITING RAW data")
                 with open(self.save_rawdata_file, 'a') as _file:
                     _file.write(', '.join(data_list2))
-                    _file.write("\n")
+                    # print("last data list item", data_list2[-1])
+                    if "\n" not in data_list2[-1]:
+                        _file.write("\n")
 
     def check_missing_packets(self, device, pkts_sent):
         # look for missing packets
+        print("time: ", datetime.now().strftime("%H:%m:%s"))
         print(f"looking for missing packets for {device}")
-        device_data = self.devices[device]
-        if device_data.packet_ids:
-            missing_pkt = self.find_next_missing_pkts(self.devices[device], pkts_sent)
+        device_data = self.positions[device]
+        print(f"device packets: {len(device_data.packet_ids)}, {device_data.packet_ids}")
+        if len(device_data.packet_ids) != 0:
+            missing_pkt = self.find_next_missing_pkts(self.positions[device], pkts_sent)
         else:  # first connected, ask for data up till now
             missing_pkt = [i for i in range(pkts_sent)]
 
@@ -377,10 +545,10 @@ class TimeStreamData:
             print(f"ask for packet: {missing_pkt}")
             self.connection.ask_for_stored_data(device, missing_pkt)
 
-    def get_missing_packets(self, device):
+    def get_missing_packets_deprecated(self, device):
         print(f"updating packets with remote data: {device}")
         missing_ids = []
-        device_data = self.devices[device]
+        device_data = self.positions[device]
         for i in range(1, device_data.latest_packet_id+1):
             print(f"comparing {i} in {device_data.packet_ids} or {device_data.stored_packets}")
             if i not in device_data.packet_ids:
@@ -398,16 +566,16 @@ class TimeStreamData:
         for i in range(1, num_packets+1):
             # print(f"Comparing {i} in {self.devices[device].packet_ids}")
             # print(f"{type(i)} {type(self.devices[device].packet_ids)} {type(self.devices[device].packet_ids[0])}")
-            if i in self.devices[device].packet_ids:
+            if i in self.positions[device].packet_ids:
                 print(f"We already have packet: {i}")
             else:
                 print(f"getting packet: {i}")
 
     def update_latest_packet_id(self, device, pkt_num):
         # this is the first method to see the device so add it to devices
-        if device not in self.devices:
+        if device not in self.positions:
             self.add_device(device)
-        self.devices[device].latest_packet_id = pkt_num
+        self.positions[device].latest_packet_id = pkt_num
 
     # def add_mqtt_data(self, data_pkt):
     #     device = data_pkt["device"]
@@ -415,7 +583,7 @@ class TimeStreamData:
     def add_db_data(self, data_pkt):
         device = data_pkt["Info"]["device"]
         # if device is not seen yet, add it to device dict
-        if device not in self.devices:
+        if device not in self.positions:
             self.add_device(device)
             # self.devices[device] = DeviceData()
             self.master_graph.add_device(device)
@@ -425,9 +593,9 @@ class TimeStreamData:
         full_time = datetime.datetime.combine(today, time)
         print(time)
         print(type(data_pkt["Info"][CPUTEMP_KEYWORD]))
-        self.devices[device].add_data_pt(full_time,
-                                         float(data_pkt["Info"][CPUTEMP_KEYWORD]),
-                                         float(data_pkt["Info"][ORYZONAL_KEYWORD]))
+        self.positions[device].add_data_pt(full_time,
+                                           float(data_pkt["Info"][CPUTEMP_KEYWORD]),
+                                           float(data_pkt["Info"][ORYZONAL_KEYWORD]))
 
     @staticmethod
     def make_file(filepath, header):
@@ -441,16 +609,26 @@ class TimeStreamData:
             pass
 
     def __str__(self):
-        if not self.devices:
+        if not self.positions:
             _str = "No device"
         else:
             _str = ""
-            for device in self.devices:
+            for device in self.positions:
                 _str += f"{device} properties:"
-                _str += f"{self.devices[device]}\n"
+                _str += f"{self.positions[device]}\n"
         return _str
 
 
 if __name__ == "__main__":
-    r = divide([1, 2, 3], [4, 5, 6])
-    print(r)
+    dd = DeviceData()
+    pkt = b'{"time": "07:03:39", "date": "2021-12-24", "packet_id": 42, "device": "position 1", "mode": "live", "OryConc": -1090446, "Raw_data": [249.93959045410156, 249.94522094726562, 249.9626007080078, 249.93377685546875, 249.99098205566406, 249.94097900390625, 250.0230255126953, 250.04856872558594, 250.0248260498047, 249.92759704589844, 250.0161895751953, 249.9507598876953, 250.06317138671875, 249.98680114746094, 249.95445251464844, 249.9587860107422, 249.99777221679688, 250.01380920410156, 249.93478393554688, 249.95440673828125, 249.9919891357422, 249.93399047851562, 249.9459991455078, 250.0257568359375, 249.94842529296875, 250.01756286621094, 250.0478057861328, 249.94923400878906, 249.94558715820312, 250.00140380859375, 249.95303344726562, 249.94984436035156, 249.99639892578125, 249.92559814453125, 249.9063720703125, 250.0, 249.97500610351562, 250.03997802734375, 250.0527801513672, 249.91041564941406, 250.0210418701172, 249.97119140625, 250.0321807861328, 249.88140869140625, 249.98898315429688, 249.9333953857422, 249.9546356201172, 249.9278564453125, 250.06280517578125, 250.08460998535156, 250.05203247070312, 249.9522247314453, 249.99339294433594, 249.9678192138672, 249.9716033935547, 249.98080444335938, 250.02439880371094, 249.88198852539062, 249.9532012939453, 249.92401123046875, 249.9735870361328, 249.93658447265625, 249.9412078857422, 249.93304443359375, 249.9438018798828, 250.0342254638672, 249.94818115234375, 249.9942169189453, 249.96441650390625, 249.91561889648438, 250.00616455078125, 249.99761962890625, 249.95437622070312, 250.017578125, 249.9233856201172, 249.97836303710938, 249.9818115234375, 250.0033721923828, 249.98660278320312, 250.0756072998047, 249.9437255859375, 249.9952392578125, 249.94061279296875, 249.83441162109375, 249.99839782714844, 250.0161895751953, 249.9766082763672, 249.95980834960938, 249.91636657714844, 249.89859008789062, 249.91238403320312, 250.01736450195312, 249.93960571289062, 250.0644073486328, 249.92478942871094, 250.04624938964844, 249.97540283203125, 249.9121856689453, 249.9148406982422, 249.94378662109375, 249.95777893066406, 250.0036163330078, 250.04058837890625, 249.98680114746094, 250.00355529785156, 249.9717559814453, 249.90696716308594, 250.0483856201172, 249.9302520751953, 249.9985809326172, 249.98019409179688, 249.9295654296875, 249.96820068359375, 249.9130096435547, 250.0527801513672, 250.0545654296875, 249.95677185058594, 249.97361755371094, 250.12921142578125, 249.89816284179688, 249.8993682861328, 249.9503936767578, 250.0, 250.00299072265625, 249.97335815429688, 249.8867950439453, 249.9827880859375, 249.92022705078125, 249.93423461914062, 250.10081481933594, 250.03720092773438, 249.9597625732422, 249.96661376953125, 250.05043029785156, 249.98439025878906, 250.0623779296875, 249.94717407226562, 250.00381469726562, 249.9661865234375, 250.0689697265625, 249.96002197265625, 249.9737548828125, 250.0966033935547, 249.90176391601562, 250.00099182128906, 249.97000122070312, 250.00933837890625, 249.9697723388672, 250.05079650878906, 250.06680297851562, 249.93179321289062, 249.9951934814453, 250.00099182128906, 249.96279907226562, 249.94664001464844, 249.96107482910156, 250.08717346191406, 250.0210418701172, 250.06736755371094, 249.9129638671875, 249.97738647460938, 249.98179626464844, 250.0697784423828, 249.91839599609375, 250.00619506835938, 249.96653747558594, 250.03758239746094, 250.07176208496094, 250.06558227539062, 250.0186004638672, 249.94619750976562, 249.9569854736328, 250.033203125, 250.0399932861328, 250.0989990234375, 250.02342224121094, 249.99258422851562, 249.9236297607422, 249.9506072998047, 249.96519470214844, 250.0074005126953, 250.05857849121094, 249.99896240234375, 250.01101684570312, 249.96421813964844, 250.01319885253906, 249.96240234375, 249.94244384765625, 250.08921813964844, 250.03018188476562, 250.07379150390625, 249.96514892578125, 250.02699279785156, 249.99241638183594, 249.96656799316406, 250.14939880371094, 249.9440460205078, 250.04441833496094, 250.1304168701172, 250.05836486816406, 249.90658569335938, 250.0889892578125, 250.0143585205078, 250.08901977539062, 250.0081787109375, 250.0664520263672, 250.0284423828125, 249.96505737304688, 250.06663513183594, 249.98818969726562, 249.98382568359375, 250.0076141357422, 250.0491943359375, 250.04037475585938, 250.0605926513672, 250.07337951660156, 250.13973999023438, 250.05519104003906, 249.92982482910156, 250.0472412109375, 250.06298828125, 250.0136260986328, 250.09121704101562, 250.0036163330078, 250.05101013183594, 249.98162841796875, 250.05816650390625, 249.9145965576172, 249.97305297851562, 249.9891815185547, 250.08621215820312, 250.05120849609375, 250.08920288085938, 249.98660278320312, 250.02357482910156, 250.0264129638672, 250.07940673828125, 250.08580017089844, 250.01779174804688, 250.1352081298828, 250.07106018066406, 250.08322143554688, 250.0992431640625, 249.96498107910156, 250.05824279785156, 250.10079956054688, 250.13241577148438, 249.97300720214844, 250.03257751464844, 250.01959228515625, 249.9469757080078, 249.8757781982422, 250.04385375976562, 250.04415893554688, 249.98858642578125, 250.0198211669922, 250.0054473876953, 250.02023315429688, 250.09121704101562, 250.10060119628906, 250.0110321044922, 250.04238891601562, 250.0895538330078, 250.08265686035156, 250.2152099609375, 250.04957580566406, 250.00621032714844, 250.07757568359375, 249.98760986328125, 249.89918518066406, 250.01739501953125, 250.1471710205078, 250.10316467285156, 250.05641174316406, 249.9365997314453, 250.01483154296875, 250.1199951171875, 250.03123474121094, 250.0023651123047, 250.0600128173828, 250.09207153320312, 250.03025817871094, 250.05043029785156, 249.97640991210938, 249.99203491210938, 249.95103454589844, 250.04640197753906, 250.05218505859375, 250.0370330810547, 250.0684051513672, 249.90380859375, 250.009765625, 250.1058349609375, 250.0894317626953, 249.9892120361328, 250.10960388183594, 249.9642333984375, 250.08682250976562, 249.97677612304688, 250.12075805664062, 250.01199340820312], "CPUTemp": "48.85", "SensorTemp": "32.98"}'
+    pkt2 = b'{"time": "07:05:39", "date": "2021-12-24", "packet_id": 45, "device": "position 1", "mode": "live", "OryConc": -1090446, "Raw_data": [249.93959045410156, 249.94522094726562, 249.9626007080078, 249.93377685546875, 249.99098205566406, 249.94097900390625, 250.0230255126953, 250.04856872558594, 250.0248260498047, 249.92759704589844, 250.0161895751953, 249.9507598876953, 250.06317138671875, 249.98680114746094, 249.95445251464844, 249.9587860107422, 249.99777221679688, 250.01380920410156, 249.93478393554688, 249.95440673828125, 249.9919891357422, 249.93399047851562, 249.9459991455078, 250.0257568359375, 249.94842529296875, 250.01756286621094, 250.0478057861328, 249.94923400878906, 249.94558715820312, 250.00140380859375, 249.95303344726562, 249.94984436035156, 249.99639892578125, 249.92559814453125, 249.9063720703125, 250.0, 249.97500610351562, 250.03997802734375, 250.0527801513672, 249.91041564941406, 250.0210418701172, 249.97119140625, 250.0321807861328, 249.88140869140625, 249.98898315429688, 249.9333953857422, 249.9546356201172, 249.9278564453125, 250.06280517578125, 250.08460998535156, 250.05203247070312, 249.9522247314453, 249.99339294433594, 249.9678192138672, 249.9716033935547, 249.98080444335938, 250.02439880371094, 249.88198852539062, 249.9532012939453, 249.92401123046875, 249.9735870361328, 249.93658447265625, 249.9412078857422, 249.93304443359375, 249.9438018798828, 250.0342254638672, 249.94818115234375, 249.9942169189453, 249.96441650390625, 249.91561889648438, 250.00616455078125, 249.99761962890625, 249.95437622070312, 250.017578125, 249.9233856201172, 249.97836303710938, 249.9818115234375, 250.0033721923828, 249.98660278320312, 250.0756072998047, 249.9437255859375, 249.9952392578125, 249.94061279296875, 249.83441162109375, 249.99839782714844, 250.0161895751953, 249.9766082763672, 249.95980834960938, 249.91636657714844, 249.89859008789062, 249.91238403320312, 250.01736450195312, 249.93960571289062, 250.0644073486328, 249.92478942871094, 250.04624938964844, 249.97540283203125, 249.9121856689453, 249.9148406982422, 249.94378662109375, 249.95777893066406, 250.0036163330078, 250.04058837890625, 249.98680114746094, 250.00355529785156, 249.9717559814453, 249.90696716308594, 250.0483856201172, 249.9302520751953, 249.9985809326172, 249.98019409179688, 249.9295654296875, 249.96820068359375, 249.9130096435547, 250.0527801513672, 250.0545654296875, 249.95677185058594, 249.97361755371094, 250.12921142578125, 249.89816284179688, 249.8993682861328, 249.9503936767578, 250.0, 250.00299072265625, 249.97335815429688, 249.8867950439453, 249.9827880859375, 249.92022705078125, 249.93423461914062, 250.10081481933594, 250.03720092773438, 249.9597625732422, 249.96661376953125, 250.05043029785156, 249.98439025878906, 250.0623779296875, 249.94717407226562, 250.00381469726562, 249.9661865234375, 250.0689697265625, 249.96002197265625, 249.9737548828125, 250.0966033935547, 249.90176391601562, 250.00099182128906, 249.97000122070312, 250.00933837890625, 249.9697723388672, 250.05079650878906, 250.06680297851562, 249.93179321289062, 249.9951934814453, 250.00099182128906, 249.96279907226562, 249.94664001464844, 249.96107482910156, 250.08717346191406, 250.0210418701172, 250.06736755371094, 249.9129638671875, 249.97738647460938, 249.98179626464844, 250.0697784423828, 249.91839599609375, 250.00619506835938, 249.96653747558594, 250.03758239746094, 250.07176208496094, 250.06558227539062, 250.0186004638672, 249.94619750976562, 249.9569854736328, 250.033203125, 250.0399932861328, 250.0989990234375, 250.02342224121094, 249.99258422851562, 249.9236297607422, 249.9506072998047, 249.96519470214844, 250.0074005126953, 250.05857849121094, 249.99896240234375, 250.01101684570312, 249.96421813964844, 250.01319885253906, 249.96240234375, 249.94244384765625, 250.08921813964844, 250.03018188476562, 250.07379150390625, 249.96514892578125, 250.02699279785156, 249.99241638183594, 249.96656799316406, 250.14939880371094, 249.9440460205078, 250.04441833496094, 250.1304168701172, 250.05836486816406, 249.90658569335938, 250.0889892578125, 250.0143585205078, 250.08901977539062, 250.0081787109375, 250.0664520263672, 250.0284423828125, 249.96505737304688, 250.06663513183594, 249.98818969726562, 249.98382568359375, 250.0076141357422, 250.0491943359375, 250.04037475585938, 250.0605926513672, 250.07337951660156, 250.13973999023438, 250.05519104003906, 249.92982482910156, 250.0472412109375, 250.06298828125, 250.0136260986328, 250.09121704101562, 250.0036163330078, 250.05101013183594, 249.98162841796875, 250.05816650390625, 249.9145965576172, 249.97305297851562, 249.9891815185547, 250.08621215820312, 250.05120849609375, 250.08920288085938, 249.98660278320312, 250.02357482910156, 250.0264129638672, 250.07940673828125, 250.08580017089844, 250.01779174804688, 250.1352081298828, 250.07106018066406, 250.08322143554688, 250.0992431640625, 249.96498107910156, 250.05824279785156, 250.10079956054688, 250.13241577148438, 249.97300720214844, 250.03257751464844, 250.01959228515625, 249.9469757080078, 249.8757781982422, 250.04385375976562, 250.04415893554688, 249.98858642578125, 250.0198211669922, 250.0054473876953, 250.02023315429688, 250.09121704101562, 250.10060119628906, 250.0110321044922, 250.04238891601562, 250.0895538330078, 250.08265686035156, 250.2152099609375, 250.04957580566406, 250.00621032714844, 250.07757568359375, 249.98760986328125, 249.89918518066406, 250.01739501953125, 250.1471710205078, 250.10316467285156, 250.05641174316406, 249.9365997314453, 250.01483154296875, 250.1199951171875, 250.03123474121094, 250.0023651123047, 250.0600128173828, 250.09207153320312, 250.03025817871094, 250.05043029785156, 249.97640991210938, 249.99203491210938, 249.95103454589844, 250.04640197753906, 250.05218505859375, 250.0370330810547, 250.0684051513672, 249.90380859375, 250.009765625, 250.1058349609375, 250.0894317626953, 249.9892120361328, 250.10960388183594, 249.9642333984375, 250.08682250976562, 249.97677612304688, 250.12075805664062, 250.01199340820312], "CPUTemp": "48.85", "SensorTemp": "32.98"}'
+
+    data_pkt = json.loads(pkt)
+    print(data_pkt)
+    devices = DEVICES[:]
+    devices.append("AV")
+    models = model.Models(devices)
+
+    dd.add_data_pkt(data_pkt, models)
+    dd.add_data_pkt(json.loads(pkt2), models)

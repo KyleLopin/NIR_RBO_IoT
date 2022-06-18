@@ -15,8 +15,18 @@ import tkinter as tk
 # local files
 import global_params
 
+
+
 MIN_SCAN_BUFFER = 5
 NUMBER_WAVELENGTHS = 301
+
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
+json_data = open(os.path.join(__location__, "new_models.json")).read()
+MODEL_INFO = json.loads(json_data)
+DEVICES = global_params.DEVICES
+POSITIONS = global_params.POSITIONS
 
 
 class NIRMenu(tk.Menu):
@@ -100,14 +110,14 @@ class NIRMenu(tk.Menu):
         self.master.open_file(filename)
 
     def change_model(self, device):
-        # print(f"change model device: {device}")
+        print(f"change model device: {device}")
         filename = self.get_filename()
         if not filename:
             return  # no name
         ref_index, coef_index, dark_index, const_index = None, None, None, None
         refs, coefs, dark = [], [], []
         constant = None
-        with open(filename, 'r') as _file:
+        with open(os.path.join(__location__, filename), 'r') as _file:
             for i, line in enumerate(_file.readlines()):
                 line_split = line.split(',')
                 if i == 0:
@@ -164,19 +174,23 @@ class NIRMenu(tk.Menu):
                                  constant, dark)
         self.master.update_model(device)
 
-    def update_sensor_model(self, device, refs_,
+    def update_sensor_model(self, position, refs_,
                             coefs_, const_, dark_):
-        with open("models.json", "r") as _file:
+        with open(os.path.join(__location__, "new_models.json"), "r") as _file:
             data = json.load(_file)
+        print('ll', data.keys())
+        device = POSITIONS[position]
+        
         if refs_:
             data[device]["Ref Intensities"] = refs_
         if coefs_:
             data[device]["Coeffs"] = coefs_
         if const_:
-            data[device]["Constant"] = const_
+            data[device]["Constant"] = [const_]
         if dark_:
             data[device]["Dark Intensities"] = dark_
-        with open("models.json", "w") as _file:
+        print(f"changing model: {refs_}")
+        with open(os.path.join(__location__, "new_models.json"), "w") as _file:
             json.dump(data, _file)
 
     def change_model_settings(self, device):
@@ -255,7 +269,7 @@ class ChangeModelParams(tk.Toplevel):
         button_frame.pack()
 
     def get_params(self, device):
-        with open("sensor_settings.json", "r") as _file:
+        with open(os.path.join(__location__, "sensor_settings.json"), "r") as _file:
             data = json.load(_file)
         return data[device]
 
@@ -279,7 +293,7 @@ class ChangeModelParams(tk.Toplevel):
         self.master.check_sensor_settings(self.device)
 
     def save_params(self):
-        with open("sensor_settings.json", "r") as _file:
+        with open(os.path.join(__location__, "sensor_settings.json"), "r") as _file:
             data = json.load(_file)
         data[self.device]["use_snv"] = self.snv_var.get()
         print(data["use_snv"])
@@ -287,7 +301,7 @@ class ChangeModelParams(tk.Toplevel):
         data[self.device]["sg_window"] = self.sg_window.get()
         data[self.device]["sg_polyorder"] = self.sg_polyorder_spin.get()
         data[self.device]["sg_window"] = self.sg_window.get()
-        with open("sensor_settings.json", "w") as _file:
+        with open(os.path.join(__location__, "sensor_settings.json"), "w") as _file:
             json.dump(data, _file)
             print(f"wrote file to {self.device} {data}")
         self.exit()
@@ -348,7 +362,7 @@ class ChangeScanParams(tk.Toplevel):
                   command=self.exit).pack(side=tk.RIGHT)
 
     def get_params(self, device):
-        with open("sensor_settings.json", "r") as _file:
+        with open(os.path.join(__location__, "sensor_settings.json"), "r") as _file:
             data = json.load(_file)
         data = data[device]
         pt_avg = data["pt_avg"]
@@ -372,7 +386,7 @@ class ChangeScanParams(tk.Toplevel):
     def submit(self, device):
         # device = global_params.POSITIONS[device]
         print(f"submitting values {self.pt_var.get()} and {self.scan_var.get()}")
-        with open("sensor_settings.json", "r") as _file:
+        with open(os.path.join(__location__, "sensor_settings.json"), "r") as _file:
             data = json.load(_file)
         pt_avg = self.pt_var.get()
         if pt_avg > 5 and pt_avg < 500:
@@ -404,7 +418,7 @@ class ChangeScanParams(tk.Toplevel):
                                  f"Interval has to be more than {min_interval}")
 
         print("Sending scan parameters")
-        with open("sensor_settings.json", "w") as _file:
+        with open(os.path.join(__location__, "sensor_settings.json"), "w") as _file:
             json.dump(data, _file)
             print(f"write file {data}")
         self.master.change_scan_params(self.device,

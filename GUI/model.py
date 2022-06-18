@@ -8,6 +8,7 @@ __author__ = "Kyle Vitatus Lopin"
 
 # standard libraries
 import json
+import os
 
 # installed libraries
 import numpy as np
@@ -16,13 +17,17 @@ import numpy as np
 # local files
 import global_params
 
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
+
 DEVICES = global_params.DEVICES
 
 
 class Models:
     def __init__(self, devices):
         # open json file to get model params
-        with open("new_models.json", "r") as _file:
+        with open(os.path.join(__location__, "new_models.json"), "r") as _file:
             json_data = json.load(_file)
         # print("model data")
         # print(json_data)
@@ -62,7 +67,7 @@ class Model:
             self.abs_signal_process = model_params["abs_signal_process"]
 
     def fit(self, raw_data):
-        # print(f"Fit: {len(raw_data)}, {self.raw_signal_process}")
+        print(f"Fit: {len(raw_data)}, {self.raw_signal_process}")
 
         raw_data = np.array(raw_data)
         # print(raw_data.shape)
@@ -71,9 +76,9 @@ class Model:
         # print(len(raw_data), len(self.dark), len(self.ref_minus_dark))
         # print(type(raw_data), type(self.dark), type(self.ref_minus_dark))
         # print(type(raw_data[0]), type(self.dark[0]), type(self.ref_minus_dark[0]))
-
+        
         refl_data = (raw_data-self.dark) / self.ref_minus_dark
-        # print(refl_data)
+        print('procss: ', self.refl_signal_process)
         if self.refl_signal_process:
             refl_data = self.fit_signal_processes(refl_data, self.refl_signal_process)
         abs_data = -np.log10(refl_data)
@@ -82,16 +87,20 @@ class Model:
         # for x in abs_data:
         #     print(x)
         abs_data = np.array([0 if np.isnan(x) else x for x in abs_data])
-        # print(abs_data)
-        # print(self.abs_signal_process)
+        print('kl', len(abs_data))
+        print(self.abs_signal_process)
         if self.abs_signal_process:
             abs_data = self.fit_signal_processes(abs_data, self.abs_signal_process)
-        # print(f"abs data len: {abs_data.shape}")
-        # print(f"coefs len: {self.coeffs.shape}")
-        # print(self.coeffs)
+        print(f"abs data len: {abs_data.shape}")
+        print(f"coefs len: {self.coeffs.shape}")
+        print(self.constant)
+        if self.coeffs.shape[0] > abs_data.shape[0]:
+            print(len(self.coeffs[:abs_data.shape[0]]))
+            self.coeffs = self.coeffs[:abs_data.shape[0]]
+            print("trimmed")
         final_array = abs_data * self.coeffs
         conc = final_array.sum() + self.constant
-        print(f"type conc: {conc}, {type(conc)}")
+        # print(f"type conc: {conc}, {type(conc)}")
         if type(conc) is list:
             conc = conc[0]
         return float(final_array.sum() + self.constant)

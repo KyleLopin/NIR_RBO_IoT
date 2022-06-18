@@ -9,6 +9,7 @@ __author__ = "Kyle Vitatus Lopin"
 # standard libraries
 from datetime import datetime, timedelta
 import json
+import os
 import tkinter as tk
 # installed libraries
 import matplotlib as mp
@@ -20,7 +21,10 @@ import numpy as np
 # local files
 import data_class
 import global_params
-plt.style.use("seaborn")
+# plt.style.use("seaborn")
+
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 SENSOR_OFFLINE = 0
 SENSOR_NOT_READING = 1
@@ -35,13 +39,13 @@ COLORS = {"device_1": "orangered",
           "device_2": "mediumseagreen",
           "device_3": "darkblue",
           "AV": "slategray"}
-json_data2 = open("master_settings.json").read()
+json_data2 = open(os.path.join(__location__, "master_settings.json")).read()
 SETTINGS = json.loads(json_data2)
 DISPLAY_ROLLING_MEAN = SETTINGS["Rolling avg"]
 
 
 def get_sensor_settings(key):
-    json_data = open("sensor_settings.json").read()
+    json_data = open(os.path.join(__location__, "sensor_settings.json")).read()
     json_settings = json.loads(json_data)
     return json_settings[key]
 
@@ -115,18 +119,18 @@ class TimeSeriesPlotter(tk.Frame):
         self.temp_labels = {}
         for i, device in enumerate(DEVICES.keys()):
             self.data[device] = [[], [], []]
-            self.devices[device] = SensorInfoFrame(sensor_frame,
-                                                   parent, device)
-            self.devices[device].pack(side=tk.LEFT, fill=tk.X)
+            # self.devices[device] = SensorInfoFrame(sensor_frame,
+            #                                        parent, device)
+            # self.devices[device].pack(side=tk.LEFT, fill=tk.X)
 
-            tk.Label(temp_frame, text=f"{DEVICES[device]} temperature:",
-                     bg="white").pack()
+            # tk.Label(temp_frame, text=f"{DEVICES[device]} temperature:",
+            #          bg="white").pack()
             self.temp_labels[device] = []
             for i in range(2):
                 # self.temp_labels[device][i].set("No Temp read")
                 _l = tk.Label(temp_frame, bg="white",
                               text="No Temp read")
-                _l.pack(side=tk.TOP)
+                # _l.pack(side=tk.TOP)
                 self.temp_labels[device].append(_l)
 
             # self.devices[device].pack()
@@ -229,9 +233,9 @@ class TimeSeriesPlotter(tk.Frame):
             self.axis.autoscale()
         self.canvas.draw()
 
-    def add_connection(self, _connection):
-        for device in DEVICES.keys():
-            self.devices[device].add_connection(_connection)
+    # def add_connection(self, _connection):
+    #     for device in DEVICES.keys():
+    #         self.devices[device].add_connection(_connection)
 
     def position_online(self, position,
                         running: bool):

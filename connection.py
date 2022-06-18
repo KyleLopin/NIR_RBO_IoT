@@ -13,6 +13,7 @@ import os
 import ssl
 import time
 import tkinter as tk
+import traceback
 # installed libraries
 import paho.mqtt.client as mqtt
 # local files
@@ -59,7 +60,7 @@ class ConnectionClass:
         self.master = master
         self.loop = None
         self.found_server = False
-        self.connected = False
+        self._connected = False
         self.client = mqtt.Client(client_name,
                                   protocol=mqtt.MQTTv311)
         print(f"got client {self.client}")
@@ -69,20 +70,20 @@ class ConnectionClass:
     def start_conn(self):
         self.loop = self.master.after(2100, self.start_conn)
         # print(f"loop client: {self.connected}")
-        self.client.loop(timeout=2.0, max_packets=40)
+        self.client.loop(timeout=2.0)
 
     def stop_conn(self):
         self.master.after_cancel(self.loop)
         self.client.loop_stop()
 
     def _on_message(self, cleint, userdata, msg):
-        print("Got message:")
-        print(msg.topic)
-        print(msg.payload)
+        print("Got message:", msg.topic, msg.payload)
         device = msg.topic.split("/")[1]
-        print(f"message from device: {device}")
+
+        # print(f"message from device: {device}")
         if "hub" not in device:
-            self.master.graph.check_in(device)
+            position = global_params.DEVICES[device]
+            self.master.info.check_in(position)
         if 'data' in msg.topic:
 
             data_str = msg.payload.decode('utf8')
@@ -110,34 +111,24 @@ class ConnectionClass:
                 self.send_command(device, pkt)
 
     def parse_mqtt_status(self, packet):
-        print("parse mqtt status ")
-        print(packet["status"] == "model params")
-        device = packet["status"]
-        print("check 3", device in POSITIONS, device)
-        if device in POSITIONS:
+        position = packet["status"]
+        if position in POSITIONS:
             print("check 1")
             if "running" in packet:
-                self.master.graph.position_online(device,
-                                                  packet["running"])
+                self.master.info.position_online(position,
+                                                 packet["running"])
             if "packets sent" in packet:
-                # device is in the position format now
-                self.data.update_latest_packet_id(POSITIONS[device],
+                # position is in the position format now
+                self.data.update_latest_packet_id(position,
                                                   packet["packets sent"])
-                # self.update_model(POSITIONS[device])
+                # self.update_model(POSITIONS[position])
                 if packet["packets sent"] > 0:
-                    self.data.check_missing_packets(POSITIONS[device], packet["packets sent"])
-                # check if all the packets the sensor read
-                # have been sent to this program
-                # ids_to_get = self.data.get_missing_packets(POSITIONS[device])
-                # print(f"missing data: {ids_to_get}")
-                # if ids_to_get:
-                #     self.ask_for_remote_data(device, ids_to_get)
-            print("check 2", "model params" in packet)
+                    self.data.check_missing_packets(position, packet["packets sent"])
             if "model params" in packet:
                 print("model params recieved")
                 print(packet)
                 # check if data from sensor is same as sent
-                model_correct = self.check_model(device, packet)
+                model_correct = self.check_model(position, packet)
                 if not model_correct:
                     print("Error checking model, please reload")
 
@@ -192,28 +183,45 @@ class ConnectionClass:
         self.publish(_topic, _message)
 
     def ask_for_stored_data(self, device, pkt_num):
+        if device not in DEVICES:
+            device = POSITIONS[device]
         _topic = f"device/{device}/control"
         _message = f'{{"command": "send packet", "packet numbers": {pkt_num}}}'
         self.publish(_topic, _message)
 
     def parse_mqtt_data(self, packet):
-        # print(f"Parsing packet: {packet}")
-        print(f"TODO: fix for AWS data")
         if "Raw_data" in packet:
             # update the data
+            print(f"parse mqtt data keys: {packet.keys()}")
             # self.master.graph.process_raw_data(packet)
             self.data.add_data(packet)
             # the data class will update the display
+        elif "data packets" in packet:
+            # this is saved data packets
+            for key in packet:
+                # print(f"data key: {key}")
+                # print(f"data value: {packet[key]}")
+                if "data packets" not in key:
+                    # print("adding data")
+                    self.data.add_data(packet[key])
 
     def publish(self, topic, message):
         print(f"publishing: {message}: to topic: {topic}")
         self.client.publish(topic, message)
 
     def _on_connection(self, client, userdata, flags, rc):
+        if rc != 0:
+            print(f"error on connect flag: {rc}")
         print(f"MQTT connected with client {client}, data: {userdata}, flags:{flags}, rc: {rc}")
-        print("TODO: if computer went to sleep, go back and check sensors for data")
-        self.connected = True
+        print(f"self connected value: {self._connected}")
+        if self._connected:
+            print(f"Already connected: {self._connected}")
+            return
+        self._connected = True
+        print(f"self connected value2: {self._connected}")
+
         if not self.found_server:
+            print("found server ask pakcet")
             self.check_connections()
             # self.update_models()
 
@@ -222,7 +230,7 @@ class ConnectionClass:
         client.subscribe(MQTT_STATUS_CHANNEL)
 
     def _on_disconnect(self, client, userdata, rc):
-        self.connected = False
+        self._connected.set(False)
         print(f"Disconnected client: {client} with rc: {rc}")
 
     def check_connections(self):
@@ -230,9 +238,12 @@ class ConnectionClass:
         will respond to check if the sensor is on """
         print("checking connections")
         for device in DEVICES:
+            print(f"check device: {device}")
             self.check_connection(device)
 
     def check_connection(self, device):
+        if device not in DEVICES:
+            device = POSITIONS[device]
         topic = f"device/{device}/control"
         self.publish(topic, '{"status": "check"}')
         # the response will be picked up by the on message
@@ -240,10 +251,14 @@ class ConnectionClass:
         # the connection status label
 
     def start_device(self, device):
+        if device not in DEVICES:
+            device = POSITIONS[device]
         topic = f"device/{device}/control"
         self.publish(topic, '{"command": "start"}')
 
     def stop_device(self, device):
+        if device not in DEVICES:
+            device = POSITIONS[device]
         topic = f"device/{device}/control"
         self.publish(topic, '{"command": "stop"}')
 
@@ -283,6 +298,10 @@ class ConnectionClass:
         self.publish(device_topic, pkt)
         # the rest has to be handled in the on_message callback
 
+    def trace_callback(self, var, index, mode):
+        print(f"Trace callback variable: {self._connected.get()}")
+        print(f"var: {var}, index: {index}, mode: {mode}")
+
     def destroy(self):
         print("destroying connection")
         self.client.loop_stop()
@@ -308,6 +327,7 @@ class LocalMQTTServer(ConnectionClass):
         # self.client.subscribe(CONTROL_TOPIC)  # hack for now
 
         self.start_conn()
+        # self.client.loop_start()
 
 
 class AWSConnectionMQTT(ConnectionClass):

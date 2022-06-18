@@ -9,6 +9,7 @@ __author__ = "Kyle Vitatus Lopin"
 import datetime
 import json
 
+import numpy as np
 import pandas as pd
 
 # print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -20,45 +21,45 @@ import pandas as pd
 #                            sheet_name="coeffs", index_col=0, engine='openpyxl')
 # data_waves = pd.read_excel(filename,
 #                            sheet_name="ref", index_col=0, engine='openpyxl')
-with open("new_models.json", "r") as _file:
-    json_file = json.load(_file)
-filename = "Deodorized RBO.xlsx"
-data_coeff = pd.read_excel(filename,
-                           sheet_name="Model",
-                           index_col=0, engine='openpyxl')
-data_waves = pd.read_excel(filename,
-                           sheet_name="Intensities",
-                           index_col=0, engine='openpyxl')
-print(data_waves)
-pls_constant = data_coeff.loc["Constant"].tolist()
-print(f"pls constant = {pls_constant}")
-
-pls_coeff = data_coeff.iloc[1:].to_numpy().tolist()
-pls_coeff = [i[0] for i in pls_coeff]
-print("=====")
-print(pls_coeff)
-print(len(pls_coeff))
-sg_settings = {"deriv": 1, "polyorder": 2, "window": 5}
-print(json_file)
-# json_model["AV"]
-ref_intensity = data_waves["Intensity"].tolist()
-dark_intensity = data_waves["Dark"].tolist()
-print(ref_intensity)
-
-json_model = {"Constant": pls_constant,
-              "Coeffs": pls_coeff,
-              "Ref Intensities": ref_intensity,
-              "Dark Intensities": dark_intensity}
+# with open("new_models.json", "r") as _file:
+#     json_file = json.load(_file)
+# filename = "Deodorized RBO.xlsx"
+# data_coeff = pd.read_excel(filename,
+#                            sheet_name="Model",
+#                            index_col=0, engine='openpyxl')
+# data_waves = pd.read_excel(filename,
+#                            sheet_name="Intensities",
+#                            index_col=0, engine='openpyxl')
+# print(data_waves)
+# pls_constant = data_coeff.loc["Constant"].tolist()
+# print(f"pls constant = {pls_constant}")
+#
+# pls_coeff = data_coeff.iloc[1:].to_numpy().tolist()
+# pls_coeff = [i[0] for i in pls_coeff]
+# print("=====")
+# print(pls_coeff)
+# print(len(pls_coeff))
+# sg_settings = {"deriv": 1, "polyorder": 2, "window": 5}
+# print(json_file)
+# # json_model["AV"]
+# ref_intensity = data_waves["Intensity"].tolist()
+# dark_intensity = data_waves["Dark"].tolist()
+# print(ref_intensity)
+#
+# json_model = {"Constant": pls_constant,
+#               "Coeffs": pls_coeff,
+#               "Ref Intensities": ref_intensity,
+#               "Dark Intensities": dark_intensity}
 # json_file = {"device_2": json_model}
-json_file["device_3"] = json_model
+# json_file["device_3"] = json_model
 # json_file["AV"]["abs_signal_process"] = [["SNV"], ["SG", sg_settings]]
 # json_file["device_1"]["abs_signal_process"] = [["SG", sg_settings]]
-for model in json_file.keys():
-    print(f"model: {model}")
-    print(json_file[model])
-    for part in json_file[model].keys():
-        print(f"part: {part}, len: {len(json_file[model][part])}")
-        print(f"values: {json_file[model][part]}")
+# for model in json_file.keys():
+#     print(f"model: {model}")
+#     print(json_file[model])
+#     for part in json_file[model].keys():
+#         print(f"part: {part}, len: {len(json_file[model][part])}")
+#         print(f"values: {json_file[model][part]}")
 # with open("new_models.json", "w") as _file:
 #     json.dump(json_file, _file)
 
@@ -187,5 +188,26 @@ a = [0, 2, 3, 7, 8]
 #
 # avg = rolling(a, 3)
 # print(f"avg: {avg}")
+# import numpy as np
+#
+# filename = "GUI/data/2021-12-14.csv"
+#
+# data = np.genfromtxt(filename, names=True,
+#                      dtype=None, delimiter=',',
+#                      encoding='bytes')
+#
+# print(data.dtype.names)
+#
+# print(data['SensorTemp'])
+# print(type(data['SensorTemp']))
+# sensor_temp = data['SensorTemp'].astype("float")
+# print(sensor_temp)
+a = np.array([])
+b = np.array([1, 2])
+print(a.shape, b.shape)
+c = np.concatenate([a, b], axis=0)
+print(c, c.shape)
 
+_sort_idx = np.searchsorted(a, 1)
+print(f"sort idx: {_sort_idx}")
 
