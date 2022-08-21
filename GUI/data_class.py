@@ -21,6 +21,7 @@ import numpy as np
 import global_params
 import model
 
+MAX_DATA_PTS = 240
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
@@ -30,12 +31,12 @@ ORYZONAL_KEYWORD = "OryConc"
 json_data = open(os.path.join(__location__, "sensor_settings.json")).read()
 SENSOR_INFO = json.loads(json_data)
 DEVICES = list(global_params.DEVICES.keys())
-# 
+#
 json_data = open(os.path.join(__location__, "new_models.json")).read()
 MODEL_INFO = json.loads(json_data)
 USE_LOCAL_MODEL = True
-# 
-# 
+#
+#
 json_data2 = open(os.path.join(__location__, "master_settings.json")).read()
 SETTINGS = json.loads(json_data2)
 DISPLAY_ROLLING_MEAN = SETTINGS["Rolling avg"]
@@ -48,7 +49,6 @@ SAVED_DATA_KEYS = DATA_PACKET_KEYS.extend(["AV", "OryConc"])
 RAW_DATA_HEADERS = ["time", "device", "packet_id"]
 RAW_DATA_HEADERS.extend([str(i) for i in range(1350, 1651)])
 
-
 indices = dict()
 for header in FILE_HEADER:
     indices[header] = FILE_HEADER.index(header)
@@ -58,69 +58,14 @@ def mean(_list: list):
     sum = 0
     for num in _list:
         sum += int(num)
-    return sum/len(_list)
+    return sum / len(_list)
 
 
 def divide(list1: list, list2: list):
     result = []
     for num1, num2 in zip(list1, list2):
-        result.append(float(num1)/float(num2))
+        result.append(float(num1) / float(num2))
     return result
-
-
-# def insert_pkt_into_np_array(data_pkt, np_array, models):
-#     sort_idx = check_pkt_id_get_insert_idx(data_pkt,
-#                                            np_array["packet_id"])
-
-
-
-# def check_pkt_id_get_insert_idx(data_pkt, _pkt_id):
-#     """ Check if the packet id is unique and
-#     return the index to insert the data in the array if so """
-#     if "packet_id" in data_pkt:
-#         _pkt_id = int(data_pkt["packet_id"])
-#         print(f"got packet_id: {_pkt_id}")
-#     else:
-#         # print(f"No packet id, abondoning data")
-#         return None
-#
-#     _sort_idx = np.searchsorted(self.packet_ids, _pkt_id)
-#     if packet_ids[_sort_idx] == _pkt_id:
-#         print(f"Already recieved pkt id: {_pkt_id} for {device}")
-#         return None  # this packet id is already present
-#     return _sort_idx
-
-
-# def convert_data_dict_to_np_row(data_pkt, models):
-#     position = data_pkt["device"]
-#     device = global_params.POSITIONS[position]
-#     if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
-#         raw_data = [float(x) for x in data_pkt["Raw_data"]]
-#         data_pkt["OryConc"] = models.fit(raw_data, device)
-#         if "position 1" in data_pkt["device"]:
-#             data_pkt["AV"] = models.fit(raw_data, "AV")
-#
-#     for temp in ["CPUTemp", "SensorTemp"]:
-#         if temp in data_pkt:
-#             data_pkt[temp] = float(data_pkt[temp])
-#         else:
-#             data_pkt[temp] = np.nan
-#     print(f"time: {data_pkt['time']}")
-#     # np_time = np.datetime64(data_pkt['time'])
-#     time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
-#     time = datetime.combine(datetime.today(), time)
-#     print(f"combine time: {time}")
-#     np_time = np.datetime64(time, 's')
-#     print(np_time)
-#     np_row = np.array([np_time,
-#                        data_pkt["device"],
-#                        data_pkt["OryConc"],
-#                        data_pkt["AV"],
-#                        data_pkt["CPUTemp"],
-#                        data_pkt["SensorTemp"],
-#                        data_pkt["packet_id"]])
-#     print(np_row)
-#     return np_row
 
 
 class DataPacket:
@@ -223,6 +168,21 @@ class DeviceData:
         self.model_checked = False
         self.settings_checked = False
 
+    def update_date(self, date):
+        self.today = datetime.today()
+        self.time_series = []
+        self.packet_ids = []
+        self.cpu_temp = []
+        self.sensor_temp = []
+        self.oryzanol = []
+        self.ory_rolling = []
+        self.av = []
+        self.av_rolling = []
+        self.ask_for_missing_packets = False
+        self.last_packet_id = -1
+        self.next_packet_to_get = 0
+        self.lost_pkt_ptr = None  # use this to find missing pkts
+
     def add_data_pkt(self, data_pkt, models):
         print("add data pkt")
         insert_idx = self.check_pkt_id_get_insert_idx(data_pkt)
@@ -240,7 +200,6 @@ class DeviceData:
             raw_data = [float(x) for x in data_pkt["Raw_data"]]
             ory_conc = models.fit(raw_data, device)
             data_pkt["OryConc"] = ory_conc
-            info_pkt = [ory_conc]
             if position == "position 1":
                 print(f"making AV values, len av_values: {len(self.av)}, {len(self.time_series)}")
 
@@ -249,7 +208,6 @@ class DeviceData:
                 # print(insert_idx, av_value, device_data.av)
                 self.av.insert(insert_idx, av_value)
                 self.av_rolling = self.rolling_avg(self.av)
-                info_pkt.append(av_value)
 
         if "CPUTemp" in data_pkt:
             temp = float(data_pkt["CPUTemp"])
@@ -268,11 +226,17 @@ class DeviceData:
         self.time_series.insert(insert_idx, time)
         self.oryzanol.insert(insert_idx, float(data_pkt["OryConc"]))
         self.ory_rolling = self.rolling_avg(self.oryzanol)
+        return data_pkt
 
-        # we need to also send info so the TimeSeries data holder
-        # can tell the master the data that
-
-        return data_pkt, info_pkt
+    def resize_data(self):
+        self.time_series = self.time_series[-MAX_DATA_PTS:]
+        self.packet_ids = self.packet_ids[-MAX_DATA_PTS:]
+        self.cpu_temp = self.cpu_temp[-MAX_DATA_PTS:]
+        self.sensor_temp = self.sensor_temp[-MAX_DATA_PTS:]
+        self.oryzanol = self.oryzanol[-MAX_DATA_PTS:]
+        self.ory_rolling = self.ory_rolling[-MAX_DATA_PTS:]
+        self.av = self.av[-MAX_DATA_PTS:]
+        self.av_rolling = self.av_rolling[-MAX_DATA_PTS:]
 
     def check_pkt_id_get_insert_idx(self, data_pkt):
         """ Check if the packet id is unique and
@@ -285,7 +249,7 @@ class DeviceData:
             # print(f"No packet id, abondoning data")
             return None
         _sort_idx = np.searchsorted(np.array(self.packet_ids), _pkt_id)
-#         print(f"{_pkt_id in self.packet_ids}, pkt ids: {self.packet_ids}")
+        #         print(f"{_pkt_id in self.packet_ids}, pkt ids: {self.packet_ids}")
         if _pkt_id in self.packet_ids:
             print(f"Already recieved pkt id: {_pkt_id}")
             return None  # this packet id is already present
@@ -293,7 +257,7 @@ class DeviceData:
         mode = None
         if "mode" in data_pkt:
             mode = data_pkt["mode"]
-#         print(f"ask for check: mode: {mode}, sort idx: {_sort_idx}, pkt: {_pkt_id}")
+        #         print(f"ask for check: mode: {mode}, sort idx: {_sort_idx}, pkt: {_pkt_id}")
         if mode != "saved" and (_sort_idx < _pkt_id):
             self.ask_for_missing_packets = True
         return _sort_idx
@@ -322,13 +286,19 @@ class TimeStreamData:
         self.update_after = None
         self.positions = {}
         # this is needed to make the datetime in the data
-        self.today = datetime.today()
+        self.today = datetime.today().strftime("%Y-%m-%d")
+        self.make_save_files()
+
+    def make_save_files(self):
         today = datetime.today().strftime("%Y-%m-%d")
         self.save_file = os.path.join(__location__, f"data/{today}.csv")
         self.make_file(self.save_file, FILE_HEADER)
         if LOG_RAW_DATA:
             self.save_rawdata_file = os.path.join(__location__, f"data/{today}_raw_data.csv")
             self.make_file(self.save_rawdata_file, RAW_DATA_HEADERS)
+
+    def update_date(self, date):
+        self.make_save_files()
 
     def add_connection(self, conn):
         self.connection = conn
@@ -365,8 +335,16 @@ class TimeStreamData:
         # print(self.positions)
         device_data = self.positions[position]  # type: DeviceData
 
-        # insert adding device data here ========
-        data_pkt, info_pkt = device_data.add_data_pkt(data_pkt, self.models)
+        # check if date has changed
+        device_date = device_data.today.date()
+        print('dates: ', device_date, datetime.today().date())
+        if device_date != datetime.today().date():
+            print("This is a new day")
+            self.update_date(None)  # the date is depricated
+            device_data.update_date(None)
+
+        data_pkt = device_data.add_data_pkt(data_pkt, self.models)
+        device_data.resize_data()
         if not data_pkt:
             return
 
@@ -378,59 +356,8 @@ class TimeStreamData:
             self.connection.ask_for_stored_data(device, missing_pkt)
             device_data.ask_for_missing_packets = False
 
-        # if "AV" in data_pkt:  # keep this before the USE_LOCAL_MODEL if condition
-        #     # saved data will have this
-        #     device_data.av.insert(insert_idx, float(data_pkt["AV"]))
-        #     device_data.av = np.concatenate((device_data.av[:insert_idx], [float(data_pkt["AV"])], device_data.av[insert_idx:]))
-        #
-        # if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
-        #     raw_data = [float(x) for x in data_pkt["Raw_data"]]
-        #     ory_conc = self.models.fit(raw_data, device)
-        #     data_pkt["OryConc"] = ory_conc
-        #     if device == "device_1":
-        #         # print(f"making AV values, len av_values: {len(device_data.av)}, {len(device_data.time_series)}")
-        #
-        #         av_value = self.models.fit(raw_data, "AV")
-        #         data_pkt["AV"] = av_value
-        #         # print(insert_idx, av_value, device_data.av)
-        #         np.insert(device_data.av, insert_idx, av_value)
-        #         device_data.av_rolling = self.rolling_avg(device_data.av)
-
         if "Raw_data" in data_pkt and save_data:
             self.master_graph.update_spectrum(data_pkt["Raw_data"], device)
-            raw_data = data_pkt["Raw_data"]
-        else:
-            raw_data = None
-        # if "CPUTemp" in data_pkt:
-        #     temp = float(data_pkt["CPUTemp"])
-        #     np.insert(device_data.cpu_temp, insert_idx, temp)
-        # else:
-        #     np.insert(device_data.cpu_temp, insert_idx, np.nan)
-        # if "SensorTemp" in data_pkt:
-        #     sensor_temp = float(data_pkt["SensorTemp"])
-        #     np.insert(device_data.sensor_temp, insert_idx, sensor_temp)
-        # else:
-        #     np.insert(device_data.sensor_temp, insert_idx, np.nan)
-
-        # device_data.packet_ids.insert(insert_idx, int(data_pkt["packet_id"]))
-        # time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
-        # time = datetime.combine(self.today, time)
-        # device_data.time_series.insert(insert_idx, time)
-        # device_data.oryzanol.insert(insert_idx, float(data_pkt["OryConc"]))
-        # device_data.rolling = self.rolling_avg(device_data.oryzanol)
-
-        # np.insert(device_data.packet_ids, insert_idx, int(data_pkt["packet_id"]))
-        # time = datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
-        # time = datetime.combine(self.today, time)
-        # # print(device_data.time_series, insert_idx, time)
-        # print("inserting into time series")
-        # print(len(device_data.time_series))
-        # # np.insert(device_data.time_series, insert_idx, np.datetime64(time))
-        # device_data.time_series.insert(insert_idx, time)
-        # print(len(device_data.time_series))
-        # # print("plok", device_data.time_series, insert_idx, time)
-        # np.insert(device_data.oryzanol, insert_idx, float(data_pkt["OryConc"]))
-        # device_data.rolling = self.rolling_avg(device_data.oryzanol)
 
         if not self.update_after:
             self.update_after = self.root_app.after(500, lambda: self.update_graph(position))
@@ -442,11 +369,6 @@ class TimeStreamData:
             self.root_app.info.check_in(position)
             # self.master_graph.update_temp(device, temp, "CPU")
             self.root_app.info.update_temp(data_pkt, position)
-            # basify the data
-            print(data_pkt)
-            self.root_app.send_data_to_db(device, data_pkt["date"],
-                                          data_pkt["time",
-                                          info_pkt, raw_data])
 
     def update_rolling_samples(self, n_samples):
         try:
@@ -458,30 +380,11 @@ class TimeStreamData:
             new_rolling_data = self.rolling_avg(device_data.oryzanol)
             self.master_graph.update_roll(device, new_rolling_data)
 
-    # def rolling_avg(self, _list):
-    #     _rolling_avg = []
-    #     for i in range(1, len(_list) + 1):
-    #         if (i - self.rolling_samples) > 0:
-    #             avg = sum(_list[i - self.rolling_samples:i]) / rolling_samples
-    #         else:
-    #             avg = sum(_list[:i]) / i
-    #         _rolling_avg.append(avg)
-    #     return _rolling_avg
-
     def update_graph(self, position):
         print("Updating graph")
         device_data = self.positions[position]  # type: DeviceData
         self.master_graph.update(position, device_data)
         self.update_after = None
-
-    def get_insert_position_depr(self, device_data, pkt_id):
-        for i, item in enumerate(device_data.packet_ids):
-            # print(f"i: {i}, item: {item}, pkt_id: {pkt_id}")
-            if item > pkt_id:
-                print(f"returning {i}")
-                return i
-        print(f"returning {i} at the end")
-        return i
 
     def find_next_missing_pkts(self, device_data, last_pkt_id):
         print(f"finding missing packet: {device_data.packet_ids}, {len(device_data.packet_ids)}")
@@ -494,6 +397,7 @@ class TimeStreamData:
     def save_data(self, data_pkt):
         # make a string of the data and write it
         data_list = []
+
         # print(f"saving packet: {data_pkt}")
         for item in FILE_HEADER:
             if item in data_pkt:
@@ -501,7 +405,6 @@ class TimeStreamData:
                     data_list.append(f"{data_pkt[item]:.1f}")
                 else:
                     data_list.append(f"{data_pkt[item]}")
-
             else:
                 data_list.append("")
         data_list.append('\n')
@@ -531,7 +434,7 @@ class TimeStreamData:
 
     def check_missing_packets(self, device, pkts_sent):
         # look for missing packets
-        print("time: ", datetime.now().strftime("%H:%m:%s"))
+        print("time: ", datetime.now().strftime("%H:%M:%S"))
         print(f"looking for missing packets for {device}")
         device_data = self.positions[device]
         print(f"device packets: {len(device_data.packet_ids)}, {device_data.packet_ids}")
@@ -549,7 +452,7 @@ class TimeStreamData:
         print(f"updating packets with remote data: {device}")
         missing_ids = []
         device_data = self.positions[device]
-        for i in range(1, device_data.latest_packet_id+1):
+        for i in range(1, device_data.latest_packet_id + 1):
             print(f"comparing {i} in {device_data.packet_ids} or {device_data.stored_packets}")
             if i not in device_data.packet_ids:
                 if i not in device_data.stored_packets:
@@ -563,7 +466,7 @@ class TimeStreamData:
         # print(f"for device: {device}")
         # print(f"we have packets: {self.devices[device].packet_ids}")
 
-        for i in range(1, num_packets+1):
+        for i in range(1, num_packets + 1):
             # print(f"Comparing {i} in {self.devices[device].packet_ids}")
             # print(f"{type(i)} {type(self.devices[device].packet_ids)} {type(self.devices[device].packet_ids[0])}")
             if i in self.positions[device].packet_ids:

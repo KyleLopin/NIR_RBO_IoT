@@ -7,6 +7,7 @@
 __author__ = "Kyle Vitatus Lopin"
 
 # standard libraries
+import csv
 from datetime import datetime
 import os
 
@@ -27,11 +28,21 @@ POSITIONS = global_params.POSITIONS.keys()
 
 def sort_file(filename, n_columns=0):
     filename = os.path.join(__location__, filename)
-    data = np.genfromtxt(filename, names=True,
-                         dtype=None, delimiter=',',
-                         encoding='bytes',
-                         autostrip=True,
-                         usecols=np.arange(0, n_columns))
+    print(filename)
+    try:
+        data = np.genfromtxt(filename, names=True,
+                             dtype=None, delimiter=',',
+                             encoding='bytes',
+                             autostrip=True,
+                             usecols=np.arange(0, n_columns))
+    except Exception as _error:
+        line_number = str(_error).split('#')[1].split(' ')[0]
+        fix_file(filename, line_number, n_columns)
+        data = np.genfromtxt(filename, names=True,
+                             dtype=None, delimiter=',',
+                             encoding='bytes',
+                             autostrip=True,
+                             usecols=np.arange(0, n_columns))
     # remove any duplicate data if is in file
     data = np.unique(data)
     header_str = str(data.dtype.names[:7]).replace("'", "")
@@ -44,6 +55,27 @@ def sort_file(filename, n_columns=0):
     with open(os.path.join(__location__, filename), "w") as _file:
         # _file.write(str(data.dtype.names))
         _file.write(sorted_str)
+
+
+def fix_file(filename, line_num, n_cols):
+    print(filename)
+    backup_file = filename + ".bak"
+    csv_reader = csv.reader(open(filename, 'r'))
+    file_lines = []
+    i = 0
+    line_num = int(line_num)
+    try:
+        for line in csv_reader:
+            if len(line) >= 7:
+                print(f"a: {line}")
+                file_lines.append(line)
+    except:
+        pass
+    csv_writer = csv.writer(open(backup_file, 'w'))
+    for wline in file_lines:
+        # print(wline)
+        csv_writer.writerow(wline)
+    os.replace(backup_file, filename)
 
 
 def get_position_data(_full_data, position):

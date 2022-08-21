@@ -6,7 +6,6 @@
 
 __author__ = "Kyle Vitatus Lopin"
 
-
 # standard libraries
 from datetime import datetime
 import json
@@ -25,15 +24,15 @@ import notebook
 import mock_conn
 import option_menu
 import saved_files_funcs
+
 # import mqtt_local_server
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
-
 DATA_HEADERS = data_class.SAVED_DATA_KEYS
-today = datetime.today().strftime("%Y-%m-%d")
-print(f"today: {today}")
+
+
 # logging.basicConfig(filename=f'log/{today}.log',
 #                     format="%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
 #                     datefmt='%m/%d/%Y %I:%M:%S %p',
@@ -47,11 +46,13 @@ def get_settings(key):
     json_settings = json.loads(json_data)
     return json_settings[key]
 
+
 DEVICES = list(global_params.DEVICES.keys())
 POSITIONS = global_params.POSITIONS
 MOCK_DATA = get_settings("Mock input")
 logging.info(f"Mocking data: {MOCK_DATA}")
 MOCK_DATA = False
+
 
 # restart the mosquitto broker to see if it helps
 # connection on startup
@@ -59,11 +60,10 @@ MOCK_DATA = False
 # os.system("xterm -hold -e 'mosquitto -v'")
 
 
-
 class RBOGUI(tk.Tk):
     def __init__(self, parent=None):
         tk.Tk.__init__(self, parent)
-
+        self.today = datetime.today().strftime("%Y-%m-%d")
         # self.graph = graph.TimeSeriesPlotter(self)
         self.graphs = notebook.Notebook(self)
         self.graphs.pack(expand=True)
@@ -89,7 +89,7 @@ class RBOGUI(tk.Tk):
             # database = aws_connection.AWSConnectionDB(self, self.data)
             # database.read_today()
             # self.connection = mqtt_local_server.LocalMQTTServer(self, self.data)
-            # self.connection = connection.LocalMQTTServer(self, self.data)
+            #             self.connection = connection.LocalMQTTServer(self, self.data)
             try:
                 self.connection = connection.LocalMQTTServer(self, self.data)
             except Exception as error:
@@ -99,10 +99,6 @@ class RBOGUI(tk.Tk):
             #     print("Using local MQTT server")
             # else:
             #     self.connection = connection.AWSConnectionMQTT(self, self.data)
-            try:
-                self.db_conn = aws_connection.AWSConnectionDB(self, self.data)
-            except Exception as _error:
-                print(f"got error on aws connection: {_error}")
 
         self.data.add_connection(self.connection)
         self.info.add_connection(self.connection)
@@ -111,10 +107,11 @@ class RBOGUI(tk.Tk):
         self.loop = None
         if not self.connection:
             pass
-#         self.maintain_mqtt_connact()
 
-        # self.time_scale_frame = graph.TimeScale(self, self.graph)
-        # self.time_scale_frame.pack(side=tk.RIGHT)
+    #         self.maintain_mqtt_connact()
+
+    # self.time_scale_frame = graph.TimeScale(self, self.graph)
+    # self.time_scale_frame.pack(side=tk.RIGHT)
 
     def connect_mqtt(self):
         """
@@ -146,6 +143,15 @@ class RBOGUI(tk.Tk):
     def check_remote_data(self, device):
         print(f"checking remote data")
         self.data.get_missing_packets(device)
+
+    def update_date(self):
+        self.today = datetime.today().strftime("%Y-%m-%d")
+        self.data.update_date(self.today)
+        print("send change date commands")
+        for device in global_params.DEVICES:
+            self.connection.send_command(device,
+                                         {"command": "update date",
+                                          "date": self.today})
 
     def open_file(self, filename, today_data=False):
         # stop reading data if opening another days data
@@ -189,9 +195,6 @@ class RBOGUI(tk.Tk):
         else:  # after coming out of sleep mode this will be called
             self.connect_mqtt()
 
-    def send_data_to_db(self, device, date, time, info_data, raw_data):
-        self.db_conn.send_data(device, date, time, info_data, raw_data)
-
     def save_data(self, data_type, device):
         print(f"saving data |{data_type}| for device: {device}")
         _file = tk.filedialog.asksaveasfile(mode='w', defaultextension=".csv")
@@ -207,20 +210,20 @@ class RBOGUI(tk.Tk):
             data_set = [device_data.cpu_temp,
                         device_data.sensor_temp]
             _file.write(f"time, CPU Temp at {device}, Sensor Temp at {device}\n")
-#         print(device_data.time_series)
+        #         print(device_data.time_series)
         times = device_data.time_series
-#         print(device_data.time_series)
+        #         print(device_data.time_series)
         times = [i.strftime('%H:%M:%S') for i in device_data.time_series]
         for i, time in enumerate(times):
             line_items = [time]
             print(data_set)
             for item in data_set:
-#                 print(item)
+                #                 print(item)
                 line_items.append(str(item[i]))
-#             print(line_items)
+            #             print(line_items)
             line = ",".join(line_items)
-#             print(line)
-            _file.write(line+'\n')
+            #             print(line)
+            _file.write(line + '\n')
 
     def change_scan_params(self, device, packet):
         packet["command"] = "update scan params"
@@ -257,7 +260,7 @@ class RBOGUI(tk.Tk):
         if self.loop:
             self.after_cancel(self.loop)
         self.connection.destroy()
-#         self.graphs.destroy()
+        #         self.graphs.destroy()
         self.quit()
         self.destroy()
         sys.exit()
