@@ -14,18 +14,15 @@ import os
 import sys
 import tkinter as tk
 # local files
-import aws_connection
-import connection
+import GUI.connection
 import data_class
 import global_params
-import graph
 import info_frame
 import notebook
 import mock_conn
 import option_menu
 import saved_files_funcs
 
-# import mqtt_local_server
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -160,17 +157,8 @@ class RBOGUI(tk.Tk):
             # clear data
             self.data = data_class.TimeStreamData(self.graph)
 
-        # with open(filename, 'r') as _file:
-        #     for i, line in enumerate(_file.readlines()):
-        #         if i != 0:  # ignore header line
-        #             data = data_class.DataPacket(data_line=line)
-        #             data.packet["date"] = None  # see if this works
-        #             self.data.add_data(data.packet, save_data=False)
-        saved_files_funcs.load_saved_file(filename, self.data)
         for position in POSITIONS:
             print(f"updating position {position}")
-            # print(self.data.positions[position])
-            # print(self.data.positions["position 1"])
             if position in self.data.positions:
                 self.graphs.update(position, self.data.positions[position])
 

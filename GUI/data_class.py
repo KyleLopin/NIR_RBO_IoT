@@ -8,6 +8,7 @@ oryzanol concentrations on an IoT sensor.
 __author__ = "Kyle Vitatus Lopin"
 
 # standard libraries
+import csv
 from datetime import datetime
 import json
 import logging
@@ -16,7 +17,6 @@ import tkinter as tk  # typehinting
 
 # installed libraries
 import numpy as np
-
 # local files
 import global_params
 import model
@@ -31,7 +31,7 @@ ORYZONAL_KEYWORD = "OryConc"
 json_data = open(os.path.join(__location__, "sensor_settings.json")).read()
 SENSOR_INFO = json.loads(json_data)
 DEVICES = list(global_params.DEVICES.keys())
-#
+POSITIONS = list(global_params.POSITIONS.keys())
 json_data = open(os.path.join(__location__, "new_models.json")).read()
 MODEL_INFO = json.loads(json_data)
 USE_LOCAL_MODEL = True
@@ -42,11 +42,11 @@ SETTINGS = json.loads(json_data2)
 DISPLAY_ROLLING_MEAN = SETTINGS["Rolling avg"]
 rolling_samples = SETTINGS["Rolling samples"]
 LOG_RAW_DATA = SETTINGS["log data"]  # option to save raw data
-FILE_HEADER = ["time", "device", "OryConc", "AV", "CPUTemp", "SensorTemp", "packet_id"]
+FILE_HEADER = ["time", "position", "OryConc", "AV", "CPUTemp", "SensorTemp", "packet_id"]
 
 DATA_PACKET_KEYS = ["time", "device", "CPUTemp", "SensorTemp", "packet_id"]
 SAVED_DATA_KEYS = DATA_PACKET_KEYS.extend(["AV", "OryConc"])
-RAW_DATA_HEADERS = ["time", "device", "packet_id"]
+RAW_DATA_HEADERS = ["time", "position", "packet_id"]
 RAW_DATA_HEADERS.extend([str(i) for i in range(1350, 1651)])
 
 indices = dict()
@@ -66,6 +66,35 @@ def divide(list1: list, list2: list):
     for num1, num2 in zip(list1, list2):
         result.append(float(num1) / float(num2))
     return result
+
+
+def isfloat(str_to_test: str) -> bool:
+    try:
+        float(str_to_test)
+        return True
+    except:
+        return False
+
+
+def isint(str_to_test: str) -> bool:
+    try:
+        int(str_to_test)
+        return True
+    except:
+        return False
+
+
+# TODO: convert DataPacket class to set of functions
+def convert_csv_row_to_packet(csv_row):
+    pkt = {}
+    if isint(csv_row[indices["packet_id"]]):
+        pkt["packet_id"] = int(csv_row[indices["packet_id"]])
+    for obj in ["time", "position"]:
+        pkt[obj] = csv_row[indices[obj]].strip()
+    for obj in ["CPUTemp", "SensorTemp", "OryConc"]:
+        if isfloat(csv_row[indices[obj]]):
+            pkt[obj] = float(csv_row[indices[obj]])
+    return pkt
 
 
 class DataPacket:
@@ -168,6 +197,22 @@ class DeviceData:
         self.model_checked = False
         self.settings_checked = False
 
+    def save_summary_data(self, csv_writer: csv.writer, position: str):
+
+        for i in range(len(self.packet_ids)):
+            # make row to write
+            if len(self.av) > 0:
+                row = [self.time_series[i].strftime("%H:%M:%S"),
+                       position, self.oryzanol[i],
+                       self.av[i], self.cpu_temp[i],
+                       self.sensor_temp[i], self.packet_ids[i]]
+            else:
+                row = [self.time_series[i].strftime("%H:%M:%S"),
+                       position, self.oryzanol[i],
+                       '', self.cpu_temp[i],
+                       self.sensor_temp[i], self.packet_ids[i]]
+            csv_writer.writerow(row)
+
     def update_date(self, date):
         self.today = datetime.today()
         self.time_series = []
@@ -193,7 +238,7 @@ class DeviceData:
             self.av.insert(insert_idx, float(data_pkt["AV"]))
             print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
 
-        position = data_pkt["device"].strip()
+        position = data_pkt["position"].strip()
         device = global_params.POSITIONS[position]
 
         if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
@@ -278,7 +323,7 @@ class TimeStreamData:
         print("Init Time Stream Data")
         self.master_graph = root_app.graphs
         self.connection = None
-        devices = DEVICES[:]
+        devices = DEVICES[:]  # copy to append to it
         devices.append("AV")
         self.models = model.Models(devices)
         # this is not pretty
@@ -290,12 +335,36 @@ class TimeStreamData:
         self.make_save_files()
 
     def make_save_files(self):
+        # check if there is already a file with today's data
         today = datetime.today().strftime("%Y-%m-%d")
         self.save_file = os.path.join(__location__, f"data/{today}.csv")
-        self.make_file(self.save_file, FILE_HEADER)
-        if LOG_RAW_DATA:
-            self.save_rawdata_file = os.path.join(__location__, f"data/{today}_raw_data.csv")
-            self.make_file(self.save_rawdata_file, RAW_DATA_HEADERS)
+        self.save_raw_data_file = os.path.join(__location__, f"data/{today}_raw_data.csv")
+        if os.path.isfile(self.save_file):
+            # file exists so load it
+            print("loading previous data")
+            self.load_previous_data()
+            # resave the data to sort the data if out of order packets were recieved
+            self.save_summary_data()
+        else:  # no file so make a new one
+            self.make_file(self.save_file, FILE_HEADER)
+        if LOG_RAW_DATA and not os.path.isfile(self.save_raw_data_file):
+            self.make_file(self.save_raw_data_file, RAW_DATA_HEADERS)
+
+    def load_previous_data(self):
+        with open(self.save_file) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            line_count = 0
+            for row in csv_reader:
+                if line_count != 0:
+                    self.add_csv_data(row)
+                line_count += 1
+
+    def save_summary_data(self):
+        with open('sorted_file.csv', 'w') as csv_file:
+            writer = csv.writer(csv_file, delimiter=",")
+            for position in self.positions:
+                self.positions[position].save_summary_data(writer, position)
+        os.replace("sorted_file.csv", self.save_file)
 
     def update_date(self, date):
         self.make_save_files()
@@ -303,19 +372,30 @@ class TimeStreamData:
     def add_connection(self, conn):
         self.connection = conn
 
-    def add_device(self, device):
-        logging.info(f"adding device: {device} to data_class")
-        print(f"adding device: {device} to data_class")
-        if device not in global_params.POSITIONS:
+    def add_device(self, position):
+        logging.info(f"adding device: {position} to data_class")
+        print(f"adding device: {position} to data_class")
+        if position not in global_params.POSITIONS:
             # see if it was send as position and fix it
             try:
-                device = global_params.DEVICES[device]
+                position = global_params.DEVICES[position]
             except Exception as error:
-                print(f"{device} is not on the list")
-        if device in global_params.POSITIONS:
-            self.positions[device] = DeviceData()
+                print(f"{position} is not on the list")
+        if position in global_params.POSITIONS:
+            self.positions[position] = DeviceData()
         else:
-            print(f"{device} is not on the list, part 2")
+            print(f"{position} is not on the list, part 2")
+
+    def add_csv_data(self, csv_row):
+        """ Add data from a csv row, this will be saved data """
+        # position = csv_row[indices["position"]].strip()
+        data_pkt = convert_csv_row_to_packet(csv_row)
+        position = data_pkt["position"]
+        if position:
+            if position in POSITIONS and position not in self.positions:
+                self.add_device(position)
+            device_data = self.positions[position]
+            device_data.add_data_pkt(data_pkt, self.models)
 
     def add_data(self, data_pkt: dict, save_data=True):
 
@@ -426,7 +506,7 @@ class TimeStreamData:
             if "Raw_data" in data_pkt:
                 data_list2.extend([str(i) for i in data_pkt["Raw_data"]])
                 # print("WRITING RAW data")
-                with open(self.save_rawdata_file, 'a') as _file:
+                with open(self.save_raw_data_file, 'a') as _file:
                     _file.write(', '.join(data_list2))
                     # print("last data list item", data_list2[-1])
                     if "\n" not in data_list2[-1]:
