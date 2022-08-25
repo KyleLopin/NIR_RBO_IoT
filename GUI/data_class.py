@@ -418,7 +418,7 @@ class TimeStreamData:
             data_pkt["time"] = time
         position = data_pkt["device"].strip()
         device = global_params.POSITIONS[position]
-        # print(f"got data from device: {device}")
+        print(f"got data from device: {device}")
         # print(data_pkt)
         if position not in self.positions:
             self.add_device(position)
