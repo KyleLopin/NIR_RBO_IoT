@@ -202,12 +202,5 @@ a = [0, 2, 3, 7, 8]
 # print(type(data['SensorTemp']))
 # sensor_temp = data['SensorTemp'].astype("float")
 # print(sensor_temp)
-a = np.array([])
-b = np.array([1, 2])
-print(a.shape, b.shape)
-c = np.concatenate([a, b], axis=0)
-print(c, c.shape)
-
-_sort_idx = np.searchsorted(a, 1)
-print(f"sort idx: {_sort_idx}")
+print(True + 1)
 
