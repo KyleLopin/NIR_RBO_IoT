@@ -514,7 +514,7 @@ class TimeStreamData:
         if LOG_RAW_DATA:
             data_list2 = []
             for item in RAW_DATA_HEADERS[:3]:
-                # print(f"add item: {item}")
+                print(f"add item: {item}")
                 if item in data_pkt:
                     data_list2.append(str(data_pkt[item]))
                 else:  # make a blank entry
