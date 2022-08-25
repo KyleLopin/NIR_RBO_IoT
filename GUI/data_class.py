@@ -493,8 +493,9 @@ class TimeStreamData:
         # make a string of the data and write it
         data_list = []
 
-        # print(f"saving packet: {data_pkt}")
+        print(f"saving packet: {data_pkt}")
         for item in FILE_HEADER_TO_SAVE:
+            print(f"item: {item}")
             if item in data_pkt:
                 if type(data_pkt[item]) is float:
                     data_list.append(f"{data_pkt[item]:.1f}")
