@@ -242,7 +242,13 @@ class DeviceData:
             self.av.insert(insert_idx, float(data_pkt["AV"]))
             print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
         print(data_pkt)
-        position = data_pkt["device"].strip()
+        if "device" in data_pkt:  # this is the code in the sensors still
+            position = data_pkt["device"].strip()
+        elif "position" in data_pkt:  # trying to move all code to here
+            position = data_pkt["position"]
+        else:
+            raise KeyError("data packet has to have 'position' or 'device' in it")
+
         device = global_params.POSITIONS[position]
 
         if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
