@@ -237,7 +237,7 @@ class DeviceData:
         if "AV" in data_pkt:
             self.av.insert(insert_idx, float(data_pkt["AV"]))
             print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
-
+        print(data_pkt)
         position = data_pkt["position"].strip()
         device = global_params.POSITIONS[position]
 
