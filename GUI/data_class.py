@@ -524,14 +524,17 @@ class TimeStreamData:
             missing_pkt = self.find_next_missing_pkts(self.positions[device], pkts_sent)
         else:  # first connected, ask for data up till now
             missing_pkt = [i for i in range(pkts_sent)]
+        print(f"going to ask for packets: {self.already_asked_for_data}")
         if missing_pkt and not self.already_asked_for_data:
             print(f"ask for packet: {missing_pkt}")
             self.already_asked_for_data = True  # set flag to not repeat ask
+            print(f"already asked for data: {self.already_asked_for_data}")
             self.root_app.after(10*60000)  # wait 10 mins and clear the flag
             self.connection.ask_for_stored_data(device, missing_pkt)
 
     def clear_ask_for_data_flag(self):
         self.already_asked_for_data = False
+        print(f"cleared asked for data: {self.already_asked_for_data}")
 
     def get_missing_packets_deprecated(self, device):
         print(f"updating packets with remote data: {device}")
