@@ -13,6 +13,7 @@ from datetime import datetime
 import json
 import logging
 import os
+import shutil
 import tkinter as tk  # typehinting
 
 # installed libraries
@@ -376,7 +377,8 @@ class TimeStreamData:
             for position in self.positions:
                 print(f"saving positions: {position}")
                 self.positions[position].save_summary_data(writer, position)
-        os.replace("sorted_file.csv", self.save_file)
+        # os.replace("sorted_file.csv", self.save_file)
+        shutil.copyfile("sorted_file.csv", self.save_file)
 
     def update_date(self, date):
         self.make_save_files()
