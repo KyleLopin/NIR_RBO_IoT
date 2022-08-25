@@ -22,7 +22,7 @@ import numpy as np
 import global_params
 import model
 
-MAX_DATA_PTS = 240
+MAX_DATA_PTS = 600
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
