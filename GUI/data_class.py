@@ -339,25 +339,30 @@ class TimeStreamData:
     def make_save_files(self):
         # check if there is already a file with today's data
         today = datetime.today().strftime("%Y-%m-%d")
-        self.save_file = os.path.join(__location__, f"data/{today}.csv")
-        self.save_raw_data_file = os.path.join(__location__, f"data/{today}_raw_data.csv")
+        data_path = os.path.join(__location__, "data")
+        self.save_file = os.path.join(data_path, f"{today}.csv")
+        self.save_raw_data_file = os.path.join(data_path, f"{today}_raw_data.csv")
         if os.path.isfile(self.save_file):
             # file exists so load it
             print("loading previous data")
             self.load_previous_data()
             # resave the data to sort the data if out of order packets were recieved
+            print("done loading previous data, resave the summary data=========>")
             self.save_summary_data()
+            print("done saving summary data===============================>")
         else:  # no file so make a new one
             self.make_file(self.save_file, FILE_HEADER)
         if LOG_RAW_DATA and not os.path.isfile(self.save_raw_data_file):
             self.make_file(self.save_raw_data_file, RAW_DATA_HEADERS)
 
     def load_previous_data(self):
+        print(f"load file: {self.save_file}")
         with open(self.save_file) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             line_count = 0
             for row in csv_reader:
                 if line_count != 0:
+                    print(f"load row: {row}")
                     self.add_csv_data(row)
                 line_count += 1
 
@@ -429,13 +434,15 @@ class TimeStreamData:
         device_data.resize_data()
         if not data_pkt:
             return
-
+        print(f"ask 2: {self.already_asked_for_data}")
         if data_pkt and device_data.ask_for_missing_packets and \
                 not self.already_asked_for_data:  # this is not data loaded from file
             # or the sensor is not currently sending saved data
+            self.already_asked_for_data = True
+            self.root_app.after(5*60000, self.clear_ask_for_data_flag)
             missing_pkt = self.find_next_missing_pkts(device_data, int(data_pkt["packet_id"]))
             print(f"ask for packet2: {missing_pkt} from device: {device}")
-
+            
             self.connection.ask_for_stored_data(device, missing_pkt)
             device_data.ask_for_missing_packets = False
 
@@ -530,7 +537,7 @@ class TimeStreamData:
             print(f"ask for packet: {missing_pkt}")
             self.already_asked_for_data = True  # set flag to not repeat ask
             print(f"already asked for data: {self.already_asked_for_data}")
-            self.root_app.after(10*60000)  # wait 10 mins and clear the flag
+            self.root_app.after(5*60000, self.clear_ask_for_data_flag)  # wait 10 mins and clear the flag
             self.connection.ask_for_stored_data(device, missing_pkt)
 
     def clear_ask_for_data_flag(self):
