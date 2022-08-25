@@ -43,10 +43,11 @@ DISPLAY_ROLLING_MEAN = SETTINGS["Rolling avg"]
 rolling_samples = SETTINGS["Rolling samples"]
 LOG_RAW_DATA = SETTINGS["log data"]  # option to save raw data
 FILE_HEADER = ["time", "position", "OryConc", "AV", "CPUTemp", "SensorTemp", "packet_id"]
+FILE_HEADER_TO_SAVE = ["time", "device", "OryConc", "AV", "CPUTemp", "SensorTemp", "packet_id"]
 
 DATA_PACKET_KEYS = ["time", "device", "CPUTemp", "SensorTemp", "packet_id"]
 SAVED_DATA_KEYS = DATA_PACKET_KEYS.extend(["AV", "OryConc"])
-RAW_DATA_HEADERS = ["time", "position", "packet_id"]
+RAW_DATA_HEADERS = ["time", "device", "packet_id"]
 RAW_DATA_HEADERS.extend([str(i) for i in range(1350, 1651)])
 
 indices = dict()
@@ -489,7 +490,7 @@ class TimeStreamData:
         data_list = []
 
         # print(f"saving packet: {data_pkt}")
-        for item in FILE_HEADER:
+        for item in FILE_HEADER_TO_SAVE:
             if item in data_pkt:
                 if type(data_pkt[item]) is float:
                     data_list.append(f"{data_pkt[item]:.1f}")
@@ -598,14 +599,15 @@ class TimeStreamData:
 
     @staticmethod
     def make_file(filepath, header):
+        print(f"making file with header: {header}")
         try:
             with open(filepath, 'x') as _file:
                 # use 'x' to try to make the file, if it exists
                 # it will raise an error and just pass
                 header.append('\n')
                 _file.write(', '.join(header))
-        except Exception:
-            pass
+        except Exception as error:
+            print(f"Error making file: {filepath}, error: {error}")
 
     def __str__(self):
         if not self.positions:
