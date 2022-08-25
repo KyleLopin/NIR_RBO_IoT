@@ -14,7 +14,6 @@ import os
 import sys
 import tkinter as tk
 # local files
-import GUI.connection
 import data_class
 import global_params
 import info_frame
