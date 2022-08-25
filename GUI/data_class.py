@@ -238,7 +238,7 @@ class DeviceData:
             self.av.insert(insert_idx, float(data_pkt["AV"]))
             print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
         print(data_pkt)
-        position = data_pkt["position"].strip()
+        position = data_pkt["device"].strip()
         device = global_params.POSITIONS[position]
 
         if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
