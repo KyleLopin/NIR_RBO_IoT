@@ -198,9 +198,10 @@ class DeviceData:
         self.settings_checked = False
 
     def save_summary_data(self, csv_writer: csv.writer, position: str):
-
+        print(f"save position summary data")
         for i in range(len(self.packet_ids)):
             # make row to write
+            print(i)
             if len(self.av) > 0:
                 row = [self.time_series[i].strftime("%H:%M:%S"),
                        position, self.oryzanol[i],
@@ -211,6 +212,7 @@ class DeviceData:
                        position, self.oryzanol[i],
                        '', self.cpu_temp[i],
                        self.sensor_temp[i], self.packet_ids[i]]
+            print(row)
             csv_writer.writerow(row)
 
     def update_date(self, date):
@@ -367,9 +369,11 @@ class TimeStreamData:
                 line_count += 1
 
     def save_summary_data(self):
+        print(f"saving data: {self.positions}")
         with open('sorted_file.csv', 'w') as csv_file:
             writer = csv.writer(csv_file, delimiter=",")
             for position in self.positions:
+                print(f"saving positions: {position}")
                 self.positions[position].save_summary_data(writer, position)
         os.replace("sorted_file.csv", self.save_file)
 
