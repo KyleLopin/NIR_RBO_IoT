@@ -378,7 +378,7 @@ class TimeStreamData:
 
     def save_summary_data(self):
         print(f"saving data: {self.positions}")
-        with open('sorted_file.csv', 'w') as csv_file:
+        with open('sorted_file.csv', 'w', newline='') as csv_file:
             writer = csv.writer(csv_file, delimiter=",")
             # write header
             writer.writerow(FILE_HEADER)
