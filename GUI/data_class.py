@@ -400,7 +400,7 @@ class TimeStreamData:
             device_data.add_data_pkt(data_pkt, self.models)
 
     def add_data(self, data_pkt: dict, save_data=True):
-
+        # TODO: fix this, its a mess
         if "Info" in data_pkt:  # is database information
             device = data_pkt["Info"]["device"]
             # time = datetime.strptime(data_pkt[TIME_KEYWORD], "%H:%M:%S").time()
@@ -430,7 +430,8 @@ class TimeStreamData:
         if not data_pkt:
             return
 
-        if data_pkt and device_data.ask_for_missing_packets:  # this is not data loaded from file
+        if data_pkt and device_data.ask_for_missing_packets and \
+                not self.already_asked_for_data:  # this is not data loaded from file
             # or the sensor is not currently sending saved data
             missing_pkt = self.find_next_missing_pkts(device_data, int(data_pkt["packet_id"]))
             print(f"ask for packet2: {missing_pkt} from device: {device}")
