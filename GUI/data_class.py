@@ -214,7 +214,7 @@ class DeviceData:
                        position, self.oryzanol[i],
                        '', self.cpu_temp[i],
                        self.sensor_temp[i], self.packet_ids[i]]
-            print(row)
+            # print(row)
             csv_writer.writerow(row)
 
     def update_date(self, date):
@@ -372,7 +372,7 @@ class TimeStreamData:
             line_count = 0
             for row in csv_reader:
                 if line_count != 0:
-                    print(f"load row: {row}")
+                    # print(f"load row: {row}")
                     self.add_csv_data(row)
                 line_count += 1
 

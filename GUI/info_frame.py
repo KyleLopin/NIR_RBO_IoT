@@ -130,7 +130,7 @@ class SensorInfoFrame(tk.Frame):
             self.status_button.config(text="Start sensor")
             self.sensor_state = SENSOR_NOT_READING
 
-        self.check_in = True
+        # self.check_in = True
 
     def position_offline(self):
         # print(f"postion offline status, {self.position}")
