@@ -123,7 +123,7 @@ class ConnectionClass:
     def parse_mqtt_status(self, packet):
         position = packet["status"]
         if position in POSITIONS:
-            print("check 1")
+            # print("check 1")
             if "running" in packet:
                 self.master.info.position_online(position,
                                                  packet["running"])

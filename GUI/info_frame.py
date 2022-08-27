@@ -114,7 +114,7 @@ class SensorInfoFrame(tk.Frame):
             self.position_online(True)
 
     def checking_in(self):
-        print(f"checkin position: {self.position}")
+        # print(f"checkin position: {self.position}")
         self.check_in = 0
 
     def position_online(self, running: bool):

@@ -445,7 +445,7 @@ class TimeStreamData:
             device_data.update_date(None)
 
         data_pkt = device_data.add_data_pkt(data_pkt, self.models)
-        device_data.resize_data()
+        # device_data.resize_data()
         if not data_pkt:
             return
         print(f"ask 2: {self.already_asked_for_data}")
@@ -494,8 +494,11 @@ class TimeStreamData:
         print(f"finding missing packet: {device_data.packet_ids}, {len(device_data.packet_ids)}")
         missing_pkts = []
         for i in range(last_pkt_id):
+            print(f"i = {i}")
             if i not in device_data.packet_ids:
                 missing_pkts.append(i)
+            print(missing_pkts)
+        ham
         return missing_pkts
 
     def save_data(self, data_pkt):
@@ -504,7 +507,7 @@ class TimeStreamData:
 
         print(f"saving packet: {data_pkt}")
         for item in FILE_HEADER_TO_SAVE:
-            print(f"item: {item}")
+            # print(f"item: {item}")
             if item in data_pkt:
                 if type(data_pkt[item]) is float:
                     data_list.append(f"{data_pkt[item]:.1f}")
@@ -523,7 +526,7 @@ class TimeStreamData:
         if LOG_RAW_DATA:
             data_list2 = []
             for item in RAW_DATA_HEADERS[:3]:
-                print(f"add item: {item}")
+                # print(f"add item: {item}")
                 if item in data_pkt:
                     data_list2.append(str(data_pkt[item]))
                 else:  # make a blank entry
