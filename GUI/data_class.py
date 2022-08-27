@@ -200,10 +200,10 @@ class DeviceData:
         self.settings_checked = False
 
     def save_summary_data(self, csv_writer: csv.writer, position: str):
-        print(f"save position summary data")
+        # print(f"save position summary data")
         for i in range(len(self.packet_ids)):
             # make row to write
-            print(i)
+            # print(i)
             if len(self.av) > 0:
                 row = [self.time_series[i].strftime("%H:%M:%S"),
                        position, self.oryzanol[i],
@@ -305,7 +305,7 @@ class DeviceData:
         _sort_idx = np.searchsorted(np.array(self.packet_ids), _pkt_id)
         #         print(f"{_pkt_id in self.packet_ids}, pkt ids: {self.packet_ids}")
         if _pkt_id in self.packet_ids:
-            print(f"Already recieved pkt id: {_pkt_id}")
+            # print(f"Already recieved pkt id: {_pkt_id}")
             return None  # this packet id is already present
         # print(f"sort idx: {_sort_idx}, len packet id: {len(self.packet_ids)}")
         mode = None
@@ -329,7 +329,7 @@ class DeviceData:
 
 class TimeStreamData:
     def __init__(self, root_app):
-        print("Init Time Stream Data")
+        # print("Init Time Stream Data")
         self.master_graph = root_app.graphs
         self.connection = None
         devices = DEVICES[:]  # copy to append to it
@@ -353,19 +353,19 @@ class TimeStreamData:
         self.save_raw_data_file = os.path.join(data_path, f"{today}_raw_data.csv")
         if os.path.isfile(self.save_file):
             # file exists so load it
-            print("loading previous data")
+            # print("loading previous data")
             self.load_previous_data()
             # resave the data to sort the data if out of order packets were recieved
-            print("done loading previous data, resave the summary data=========>")
+            # print("done loading previous data, resave the summary data=========>")
             self.save_summary_data()
-            print("done saving summary data===============================>")
+            # print("done saving summary data===============================>")
         else:  # no file so make a new one
             self.make_file(self.save_file, FILE_HEADER)
         if LOG_RAW_DATA and not os.path.isfile(self.save_raw_data_file):
             self.make_file(self.save_raw_data_file, RAW_DATA_HEADERS)
 
     def load_previous_data(self):
-        print(f"load file: {self.save_file}")
+        # print(f"load file: {self.save_file}")
         with open(self.save_file) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             line_count = 0
@@ -376,13 +376,13 @@ class TimeStreamData:
                 line_count += 1
 
     def save_summary_data(self):
-        print(f"saving data: {self.positions}")
+        # print(f"saving data: {self.positions}")
         with open('sorted_file.csv', 'w', newline='') as csv_file:
             writer = csv.writer(csv_file, delimiter=",")
             # write header
             writer.writerow(FILE_HEADER)
             for position in self.positions:
-                print(f"saving positions: {position}")
+                # print(f"saving positions: {position}")
                 self.positions[position].save_summary_data(writer, position)
         # os.replace("sorted_file.csv", self.save_file)
         shutil.copyfile("sorted_file.csv", self.save_file)
@@ -394,8 +394,8 @@ class TimeStreamData:
         self.connection = conn
 
     def add_device(self, position):
-        logging.info(f"adding device: {position} to data_class")
-        print(f"adding device: {position} to data_class")
+        # logging.info(f"adding device: {position} to data_class")
+        # print(f"adding device: {position} to data_class")
         if position not in global_params.POSITIONS:
             # see if it was send as position and fix it
             try:
@@ -468,7 +468,7 @@ class TimeStreamData:
 
         if save_data:  # this is live data
             # TODO: update the ory conc value in this
-            print(f"saving data: {data_pkt['packet_id']}")
+            # print(f"saving data: {data_pkt['packet_id']}")
             self.save_data(data_pkt)
             self.root_app.info.check_in(position)
             # self.master_graph.update_temp(device, temp, "CPU")
@@ -498,7 +498,6 @@ class TimeStreamData:
             if i not in device_data.packet_ids:
                 missing_pkts.append(i)
             print(missing_pkts)
-        ham
         return missing_pkts
 
     def save_data(self, data_pkt):
