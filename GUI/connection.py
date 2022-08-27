@@ -77,7 +77,7 @@ class ConnectionClass:
 
     def start_conn(self):
         self.loop = self.master.after(2000, self.start_conn)
-        print(f"loop client: {self._connected}")
+        # print(f"loop client: {self._connected}")
         if not self._connected:
             self._connect()
         self.client.loop(timeout=0.1)

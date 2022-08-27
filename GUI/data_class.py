@@ -22,7 +22,7 @@ import numpy as np
 import global_params
 import model
 
-MAX_DATA_PTS = 240
+MAX_DATA_PTS = 600
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
@@ -233,7 +233,7 @@ class DeviceData:
         self.lost_pkt_ptr = None  # use this to find missing pkts
 
     def add_data_pkt(self, data_pkt, models):
-        print("add data pkt")
+        # print(f"add data pkt: {data_pkt}")
         insert_idx = self.check_pkt_id_get_insert_idx(data_pkt)
         if insert_idx == None:
             return  # no pkt id, or one already received
@@ -241,7 +241,6 @@ class DeviceData:
         if "AV" in data_pkt:
             self.av.insert(insert_idx, float(data_pkt["AV"]))
             print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
-        print(data_pkt)
         if "device" in data_pkt:  # this is the code in the sensors still
             position = data_pkt["device"].strip()
         elif "position" in data_pkt:  # trying to move all code to here
@@ -299,7 +298,7 @@ class DeviceData:
         # print(f"check pkt: {data_pkt}")
         if "packet_id" in data_pkt:
             _pkt_id = int(data_pkt["packet_id"])
-            print(f"got packet_id--: {_pkt_id}")
+            # print(f"got packet_id--: {_pkt_id}")
         else:
             # print(f"No packet id, abondoning data")
             return None
@@ -429,7 +428,7 @@ class TimeStreamData:
             data_pkt["time"] = time
         position = data_pkt["device"].strip()
         device = global_params.POSITIONS[position]
-        print(f"got data from device: {device}")
+        # print(f"got data from device: {device}")
         # print(data_pkt)
         if position not in self.positions:
             self.add_device(position)
@@ -439,7 +438,7 @@ class TimeStreamData:
 
         # check if date has changed
         device_date = device_data.today.date()
-        print('dates: ', device_date, datetime.today().date())
+        # print('dates: ', device_date, datetime.today().date())
         if device_date != datetime.today().date():
             print("This is a new day")
             self.update_date(None)  # the date is depricated
@@ -614,7 +613,7 @@ class TimeStreamData:
 
     @staticmethod
     def make_file(filepath, header):
-        print(f"making file with header: {header}")
+        # print(f"making file with header: {header}")
         try:
             with open(filepath, 'x') as _file:
                 # use 'x' to try to make the file, if it exists

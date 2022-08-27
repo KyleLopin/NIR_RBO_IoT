@@ -69,7 +69,7 @@ class RBOGUI(tk.Tk):
 
         # check what time stamps for each device we have received
         self.check_previous_data()
-
+        
         # self.graph.add_data_class(self.data)
         self.graphs.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
         self.info = info_frame.InfoFrame(self, POSITIONS)

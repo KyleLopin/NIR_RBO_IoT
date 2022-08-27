@@ -107,7 +107,7 @@ class SensorInfoFrame(tk.Frame):
         # self.thread.start()
         self.loop = self.master.after(10000, self.update_online_status_labels)
         self.check_in += 1
-        print(f"loop checkin for position: {self.position}, checkin: {self.check_in} ")
+        # print(f"loop checkin for position: {self.position}, checkin: {self.check_in} ")
         if self.check_in > CHECK_IN_FAILS_TO_OFF:
             self.position_offline()
         else:  # check in is set True if it recieves data
