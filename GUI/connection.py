@@ -132,8 +132,8 @@ class ConnectionClass:
                 self.data.update_latest_packet_id(position,
                                                   packet["packets sent"])
                 # self.update_model(POSITIONS[position])
-                if packet["packets sent"] > 0:
-                    self.data.check_missing_packets(position, packet["packets sent"])
+                # if packet["packets sent"] > 0:
+                #     self.data.check_missing_packets(position, packet["packets sent"])
             if "model params" in packet:
                 print("model params recieved")
                 print(packet)
