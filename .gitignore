@@ -1,8 +1,10 @@
 # data files
 data/
+GUI/sorted_file.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
+GUI/__pycache__/
 *.py[cod]
 *$py.class
 
