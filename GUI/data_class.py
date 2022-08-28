@@ -494,10 +494,10 @@ class TimeStreamData:
         print(f"finding missing packet: {device_data.packet_ids}, {len(device_data.packet_ids)}")
         missing_pkts = []
         for i in range(last_pkt_id):
-            print(f"i = {i}")
+            # print(f"i = {i}")
             if i not in device_data.packet_ids:
                 missing_pkts.append(i)
-            print(missing_pkts)
+            # print(missing_pkts)
         return missing_pkts
 
     def save_data(self, data_pkt):
