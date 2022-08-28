@@ -9,7 +9,7 @@ __author__ = "Kyle Vitatus Lopin"
 
 # standard libraries
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import logging
 import os
@@ -189,7 +189,7 @@ class DeviceData:
         self.av = []
         self.av_rolling = []
 
-        self.today = datetime.today()
+        self.today = datetime.today().date()
         self.rolling_samples = rolling_samples
         self.ask_for_missing_packets = False
         self.last_packet_id = -1
@@ -218,7 +218,7 @@ class DeviceData:
             csv_writer.writerow(row)
 
     def update_date(self, date):
-        self.today = datetime.today()
+        self.today = datetime.today().date()
         self.time_series = []
         self.packet_ids = []
         self.cpu_temp = []
@@ -426,7 +426,14 @@ class TimeStreamData:
             time = data_pkt[TIME_KEYWORD]
             data_pkt = data_pkt["Info"]
             data_pkt["time"] = time
-        position = data_pkt["device"].strip()
+        # refactoring the project to remove all 'device's
+        if "device" in data_pkt:
+            position = data_pkt["device"].strip()
+        elif "position" in data_pkt:
+            position = data_pkt["position"].strip()
+        else:
+            print("No 'device' or 'position' in data_pkt")
+            return 200
         device = global_params.POSITIONS[position]
         # print(f"got data from device: {device}")
         # print(data_pkt)
@@ -437,12 +444,20 @@ class TimeStreamData:
         device_data = self.positions[position]  # type: DeviceData
 
         # check if date has changed
-        device_date = device_data.today.date()
+        packet_date = data_pkt["date"]
         # print('dates: ', device_date, datetime.today().date())
-        if device_date != datetime.today().date():
-            print("This is a new day")
-            self.update_date(None)  # the date is depricated
-            device_data.update_date(None)
+        current_date = device_data.today
+        # print('ll ', current_date, packet_date)
+        if packet_date != current_date:
+            # print("This is a different day")
+            # test if date advanced at midnight and files need to update
+            if packet_date == current_date + timedelta(days=1):
+                self.update_date(None)  # make the new file
+                device_data.update_date(None)  # tell device_data to update
+            elif packet_date == current_date - timedelta(days=1):
+                # old data was recieved, just ignore it rather than figure out if its needed
+                print("Ignoring old data")
+                return 201  # testing unit code
 
         data_pkt = device_data.add_data_pkt(data_pkt, self.models)
         # device_data.resize_data()
@@ -473,6 +488,7 @@ class TimeStreamData:
             self.root_app.info.check_in(position)
             # self.master_graph.update_temp(device, temp, "CPU")
             self.root_app.info.update_temp(data_pkt, position)
+        return 0
 
     def update_rolling_samples(self, n_samples):
         try:
@@ -491,7 +507,7 @@ class TimeStreamData:
         self.update_after = None
 
     def find_next_missing_pkts(self, device_data, last_pkt_id):
-        print(f"finding missing packet: {device_data.packet_ids}, {len(device_data.packet_ids)}")
+        # print(f"finding missing packet: {device_data.packet_ids}, {len(device_data.packet_ids)}")
         missing_pkts = []
         for i in range(last_pkt_id):
             # print(f"i = {i}")

@@ -7,7 +7,7 @@
 __author__ = "Kyle Vitatus Lopin"
 
 # standard libraries
-from datetime import datetime
+from datetime import datetime, timedelta
 import filecmp
 import os
 import shutil
@@ -52,6 +52,7 @@ class TestDataClass(unittest.TestCase):
         with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
                         return_value=True) as mocked_gui:
             dc = data_class.TimeStreamData(mocked_gui)
+
         # test if the function is sorting and saving correctly
         correct_sorted_file = os.path.join(__location__, "sorted_template.csv")
         self.assertTrue(
@@ -59,19 +60,31 @@ class TestDataClass(unittest.TestCase):
                         shallow=False),
             msg="Sorted file is not correct after loading and resaving")
 
+        # make sure the packet ids are stored in the device data correctly
         self.assertListEqual(dc.positions['position 2'].packet_ids,
                              CORRECT_PACKET_IDS, msg="packet_ids not correct")
 
+        # test that the class calculates the correct missing packet ids to ask for
         device_data = dc.positions['position 2']
         missing_pkts = dc.find_next_missing_pkts(device_data, 1090)
         self.assertListEqual(missing_pkts, MISSING_PACKETS,
                              msg="Missing packets list wrong")
 
-    # def test_send_missing_pkts(self):
-    #     copy_data_test_file()  # copy file to test with proper name
-    #     RBOGUI()
+        # test if add_data will ignore data from a previous date
+        today = datetime.today()
+        yesterday = (today - timedelta(days=1)).date()
+        data_pkt = {"device": "position 2", "date": yesterday}
+        error_code_tomorrow = dc.add_data(data_pkt)
+        self.assertEqual(error_code_tomorrow, 201, msg="")
+
+        # test if add_data will update to a new day if received a packet with a new days date
+        device_data.today = yesterday  # change data to yesterday to test
+        data_pkt = {"device": "position 2", "date": today.date()}
+        dc.add_data(data_pkt)
+        self.assertEqual(device_data.today, today.date(),
+                         msg="data class does not update to the current date correctly")
 
 
 if __name__ == "__main__":
     # copy_data_test_file()  # copy file to test with proper name
-    unittest.main()
+    unittest.main(verbosity=2)
