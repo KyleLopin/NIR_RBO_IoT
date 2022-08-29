@@ -420,6 +420,9 @@ class TimeStreamData:
 
     def add_data(self, data_pkt: dict, save_data=True):
         # TODO: fix this, its a mess
+        print(f"data_pkt: {data_pkt}")
+        if type(data_pkt) is not dict:
+            return 204  # TODO: sometimes an int gets in here.  look at sensor code to fix
         if "Info" in data_pkt:  # is database information
             device = data_pkt["Info"]["device"]
             # time = datetime.strptime(data_pkt[TIME_KEYWORD], "%H:%M:%S").time()
@@ -447,9 +450,10 @@ class TimeStreamData:
         packet_date = data_pkt["date"]
         # print('dates: ', device_date, datetime.today().date())
         current_date = device_data.today
-        # print('ll ', current_date, packet_date)
+        print('ll ', current_date, packet_date, current_date - timedelta(days=1))
+        print(f"|{packet_date}|{current_date - timedelta(days=1)}|{type(packet_date)}|{type(current_date - timedelta(days=1))}")
         if packet_date != current_date:
-            # print("This is a different day")
+            print("This is a different day", packet_date == current_date - timedelta(days=1))
             # test if date advanced at midnight and files need to update
             if packet_date == current_date + timedelta(days=1):
                 self.update_date(None)  # make the new file
@@ -520,7 +524,7 @@ class TimeStreamData:
         # make a string of the data and write it
         data_list = []
 
-        print(f"saving packet: {data_pkt}")
+        # print(f"saving packet: {data_pkt}")
         for item in FILE_HEADER_TO_SAVE:
             # print(f"item: {item}")
             if item in data_pkt:
