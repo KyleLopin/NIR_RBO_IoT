@@ -435,26 +435,21 @@ class TimeStreamData:
             print("No 'device' or 'position' in data_pkt")
             return 200
         device = global_params.POSITIONS[position]
-        # print(f"got data from device: {device}")
-        # print(data_pkt)
         if position not in self.positions:
             self.add_device(position)
-        # print(f"======: pkt {device_data.last_packet_id}")
-        # print(self.positions)
         device_data = self.positions[position]  # type: DeviceData
 
         # check if date has changed
         packet_date = data_pkt["date"]
-        # print('dates: ', device_date, datetime.today().date())
+        packet_datetime = datetime.strptime(packet_date, "%Y-%m-%d").date()
         current_date = device_data.today
-        # print('ll ', current_date, packet_date)
         if packet_date != current_date:
             # print("This is a different day")
             # test if date advanced at midnight and files need to update
-            if packet_date == current_date + timedelta(days=1):
+            if packet_datetime == device_data.today + timedelta(days=1):
                 self.update_date(None)  # make the new file
                 device_data.update_date(None)  # tell device_data to update
-            elif packet_date == current_date - timedelta(days=1):
+            elif packet_datetime == device_data.today - timedelta(days=1):
                 # old data was recieved, just ignore it rather than figure out if its needed
                 print("Ignoring old data")
                 return 201  # testing unit code
