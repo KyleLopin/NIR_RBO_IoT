@@ -65,10 +65,12 @@ class ConnectionClass:
         if os.name != "posix":  # this is tnot the mqtt broker
             self.mqtt_servers = [MQTT_SERVER]
             # get all dynamic ips to test
-            all_ips = os.popen('arp -p')
+            all_ips = os.popen('arp -a')
             for ip in all_ips:
-                print(ip)
-        
+                if 'dynamic' in ip:  # this could be the rpi mqtt broker
+                    print(f"dynamic ip: {ip}")
+                    print(ip.split()[0])
+                    self.mqtt_servers.append(ip.split()[0])
         
 
         self.master = master
@@ -342,7 +344,7 @@ class ConnectionClass:
             mqtt_server_name = MQTT_LOCALHOST
         else:  # mac or windows should look for external
            
-            mqtt_server_name = MQTT_SERVER
+            mqtt_server_name = self.mqtt
         print(f"connecting to: {mqtt_server_name}")
         try:
             result = self.client.connect(mqtt_server_name, 1883, 60)
