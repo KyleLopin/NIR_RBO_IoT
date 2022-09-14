@@ -34,7 +34,7 @@ SETTINGS_KEYS = ["use_snv", "use_sg", "sg_window",
 # MQTT_SERVER = "192.168.1.52"
 MQTT_LOCALHOST = "localhost"
 MQTT_SERVER = "MQTTBroker.local"
-MQTT_SERVER = "192.168.1.105"
+# MQTT_SERVER = "192.168.1.105"
 MQTT_PATH_LISTEN = "device/+/data"
 MQTT_STATUS_CHANNEL = "device/+/status"
 MQTT_USERNAME = "MacDaddy"
@@ -63,6 +63,7 @@ class ConnectionClass:
             self.data = data_class.TimeStreamData(master.graph)
 
         if os.name != "posix":  # this is tnot the mqtt broker
+            self.mqtt_server_index = 0
             self.mqtt_servers = [MQTT_SERVER]
             # get all dynamic ips to test
             all_ips = os.popen('arp -a')
@@ -343,8 +344,8 @@ class ConnectionClass:
             # raspberry pi which should be running the
             mqtt_server_name = MQTT_LOCALHOST
         else:  # mac or windows should look for external
-           
-            mqtt_server_name = self.mqtt
+            mqtt_server_name = self.mqtt_servers[self.mqtt_server_index]
+            self.mqtt_server_index = (self.mqtt_server_index + 1) % len(self.mqtt_servers)
         print(f"connecting to: {mqtt_server_name}")
         try:
             result = self.client.connect(mqtt_server_name, 1883, 60)
@@ -353,6 +354,10 @@ class ConnectionClass:
             #     self._connected = True
         except Exception as e:
             print(f"connection error: {e}")
+            print(type(e))
+            if 'actively refused' in str(e):
+                print(f"delete the ip: {mqtt_server_name} from list")
+                self.mqtt_server_index = (self.mqtt_server_index + 1) % len(self.mqtt_servers)
             self._connected = False
     
     def destroy(self):
