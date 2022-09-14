@@ -32,14 +32,15 @@ SETTINGS_KEYS = ["use_snv", "use_sg", "sg_window",
 
 # MQTT_SERVER = "localhost"
 # MQTT_SERVER = "192.168.1.52"
-# MQTT_LOCALHOST = "localhost"
-MQTT_LOCALHOST = "MQTTBroker.local"
+MQTT_LOCALHOST = "localhost"
 MQTT_SERVER = "MQTTBroker.local"
+MQTT_SERVER = "192.168.1.105"
 MQTT_PATH_LISTEN = "device/+/data"
 MQTT_STATUS_CHANNEL = "device/+/status"
 MQTT_USERNAME = "MacDaddy"
 MQTT_PASSWORD = "MacPass"
 MQTT_NAME = "MacDaddy"
+MQTT_VERSION = mqtt.MQTTv311
 
 AWS_MQTT_HOST = "a25h8mlp62407w-ats.iot.ap-southeast-1.amazonaws.com"
 AWS_MQTT_PORT = 8883
@@ -60,12 +61,22 @@ class ConnectionClass:
         else:
             print("making connection in connection.py")
             self.data = data_class.TimeStreamData(master.graph)
+
+        if os.name != "posix":  # this is tnot the mqtt broker
+            self.mqtt_servers = [MQTT_SERVER]
+            # get all dynamic ips to test
+            all_ips = os.popen('arp -p')
+            for ip in all_ips:
+                print(ip)
+        
+        
+
         self.master = master
         self.loop = None
         self.found_server = False
         self._connected = False
-        self.client = mqtt.Client(client_name, clean_session=False,
-                                  protocol=mqtt.MQTTv311)
+        self.client = mqtt.Client(client_name, # clean_session=False,
+                                  protocol=MQTT_VERSION)
         self.client.username_pw_set(username=MQTT_USERNAME,
                                     password=MQTT_PASSWORD)
         print(f"got client {self.client}")
@@ -227,7 +238,7 @@ class ConnectionClass:
 #         print(f"self connected value: {self._connected}")
         print(f"connection time: {datetime.now().strftime('%H:%M:%S')}")
         if self._connected:
-#             print(f"Already connected: {self._connected}")
+            print(f"Already connected: {self._connected}")
             return
         self._connected = True
 #         print(f"self connected value2: {self._connected}")
@@ -336,8 +347,8 @@ class ConnectionClass:
         try:
             result = self.client.connect(mqtt_server_name, 1883, 60)
             print(f"mqtt result: {result}")
-#             if result == 0:
-#                 self._connected = True
+            # if result == 0:
+            #     self._connected = True
         except Exception as e:
             print(f"connection error: {e}")
             self._connected = False
