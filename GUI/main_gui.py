@@ -257,4 +257,5 @@ if __name__ == '__main__':
     app = RBOGUI()
     app.title("Spectrograph")
     app.geometry("1250x650")
+    app.protocol("WM_DELETE_WINDOW", app.main_destroy)
     app.mainloop()

@@ -348,7 +348,7 @@ class ConnectionClass:
             self.mqtt_server_index = (self.mqtt_server_index + 1) % len(self.mqtt_servers)
         print(f"connecting to: {mqtt_server_name}")
         try:
-            result = self.client.connect(mqtt_server_name, 1883, 60)
+            result = self.client.connect(mqtt_server_name, 1883, 15)
             print(f"mqtt result: {result}")
             # if result == 0:
             #     self._connected = True
@@ -357,6 +357,7 @@ class ConnectionClass:
             print(type(e))
             if 'actively refused' in str(e):
                 print(f"delete the ip: {mqtt_server_name} from list")
+                self.mqtt_servers.remove(mqtt_server_name)
                 self.mqtt_server_index = (self.mqtt_server_index + 1) % len(self.mqtt_servers)
             self._connected = False
     
