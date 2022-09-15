@@ -17,6 +17,7 @@ import tkinter as tk
 import traceback
 # installed libraries
 import paho.mqtt.client as mqtt
+from dotenv import load_dotenv
 # local files
 import check_saved_data
 import data_class
@@ -37,6 +38,11 @@ MQTT_SERVER = "MQTTBroker.local"
 # MQTT_SERVER = "192.168.1.105"
 MQTT_PATH_LISTEN = "device/+/data"
 MQTT_STATUS_CHANNEL = "device/+/status"
+# Credentials
+load_dotenv('.env')
+# MQTT_USERNAME = os.getenv('MQTT_USERNAME')
+# MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
+# MQTT_NAME = os.getenv('MQTT_NAME')
 MQTT_USERNAME = "MacDaddy"
 MQTT_PASSWORD = "MacPass"
 MQTT_NAME = "MacDaddy"
@@ -65,6 +71,7 @@ class ConnectionClass:
         if os.name != "posix":  # this is tnot the mqtt broker
             self.mqtt_server_index = 0
             self.mqtt_servers = [MQTT_SERVER]
+            self.mqtt_server_index = 0
             # get all dynamic ips to test
             all_ips = os.popen('arp -a')
             for ip in all_ips:
@@ -72,8 +79,6 @@ class ConnectionClass:
                     print(f"dynamic ip: {ip}")
                     print(ip.split()[0])
                     self.mqtt_servers.append(ip.split()[0])
-        
-
         self.master = master
         self.loop = None
         self.found_server = False

@@ -25,7 +25,9 @@ import model
 MAX_DATA_PTS = 600
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
-
+# FACTORY_DIR = "C:\Users\nirsb\OneDrive - Surin Bran Oil Co.,Ltd\Documents\Refine Process NIR\Data"
+FACTORY_DIR = os.path.join("C:", "Users", "nirsb", "OneDrive - Surin Bran Oil Co.,Ltd",
+                           "Documents", "Refine Process NIR", "Data")
 TIME_KEYWORD = "Datetime"
 CPUTEMP_KEYWORD = "CPUTemp"
 ORYZONAL_KEYWORD = "OryConc"
@@ -343,6 +345,9 @@ class TimeStreamData:
         self.today = datetime.today().strftime("%Y-%m-%d")
         # flag to prevent repeately asking for the same data
         self.already_asked_for_data = False
+        # make these in make_save_files() has to make these on new days also
+        self.save_file = None
+        self.save_raw_data_file = None
         self.make_save_files()
 
     def make_save_files(self):
@@ -350,15 +355,21 @@ class TimeStreamData:
         today = datetime.today().strftime("%Y-%m-%d")
         data_path = os.path.join(__location__, "data")
         self.save_file = os.path.join(data_path, f"{today}.csv")
+        print("save file", self.save_file)
         self.save_raw_data_file = os.path.join(data_path, f"{today}_raw_data.csv")
+        try:  # the factory computer wants a different directory
+            if os.path.isdir(FACTORY_DIR):
+                self.save_file = os.path.join(FACTORY_DIR, f"{today}.csv")
+                print(f"Saving to factory dir: {self.save_file}")
+        except Exception as e:
+            print("no factory directory")
+
         if os.path.isfile(self.save_file):
             # file exists so load it
             # print("loading previous data")
             self.load_previous_data()
-            # resave the data to sort the data if out of order packets were recieved
-            # print("done loading previous data, resave the summary data=========>")
+            # save the data after sorting
             self.save_summary_data()
-            # print("done saving summary data===============================>")
         else:  # no file so make a new one
             self.make_file(self.save_file, FILE_HEADER)
         if LOG_RAW_DATA and not os.path.isfile(self.save_raw_data_file):
