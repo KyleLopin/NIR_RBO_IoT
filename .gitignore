@@ -5,6 +5,7 @@ GUI/sorted_file.csv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 GUI/__pycache__/
+GUI/certs
 *.py[cod]
 *$py.class
 
