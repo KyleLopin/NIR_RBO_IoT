@@ -30,13 +30,13 @@ __location__ = os.path.realpath(
 
 DATA_HEADERS = data_class.SAVED_DATA_KEYS
 
-
-# logging.basicConfig(filename=f'log/{today}.log',
-#                     format="%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
-#                     datefmt='%m/%d/%Y %I:%M:%S %p',
-#                     filemode='a+',
-#                     encoding='utf-8',
-#                     level=logging.INFO)
+today = datetime.today().strftime("%Y-%m-%d")
+logging.basicConfig(filename=f'log/{today}.log',
+                    format="%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
+                    datefmt='%m/%d/%Y %I:%M:%S %p',
+                    filemode='a+',
+                    encoding='utf-8',
+                    level=logging.INFO)
 
 
 def get_settings(key):

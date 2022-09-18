@@ -10,6 +10,7 @@ __author__ = "Kyle Vitatus Lopin"
 import ast
 from datetime import datetime
 import json
+import logging
 import os
 import ssl
 import time
@@ -30,6 +31,7 @@ MODEL_KEYS = ["Constant", "Coeffs", "Ref Intensities",
               "Dark Intensities"]
 SETTINGS_KEYS = ["use_snv", "use_sg", "sg_window",
                  "sg_polyorder", "sg_deriv"]
+logger = logging.getLogger(__name__)
 
 # MQTT_SERVER = "localhost"
 # MQTT_SERVER = "192.168.1.52"
@@ -206,12 +208,14 @@ class ConnectionClass:
             return True
         return False  # no device
 
-    def ask_for_settings(self):
+    def ask_for_settings(self, position):
+        device = DEVICES[position]
         _topic = f"device/{device}/control"
         _message = '{"command": "send sensor settings"}'
         self.publish(_topic, _message, qos=1)
 
     def ask_for_stored_data(self, device, pkt_num):
+        # TODO: device should be position now
         if device not in DEVICES:
             device = POSITIONS[device]
         _topic = f"device/{device}/control"
@@ -232,7 +236,11 @@ class ConnectionClass:
                 # print(f"data value: {packet[key]}")
                 if "data packets" not in key:
                     # print("adding data")
-                    self.data.add_data(packet[key])
+                    try:
+                        self.data.add_data(packet[key])
+                    except Exception as _error:
+                        print(f"error processing packet: {packet}")
+                        logging.error(f"Error: {_error}\nprocessing packet {packet}")
 
     def publish(self, topic, message, qos=0):
         print(f"publishing: {message}: to topic: {topic}")

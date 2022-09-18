@@ -202,5 +202,7 @@ a = [0, 2, 3, 7, 8]
 # print(type(data['SensorTemp']))
 # sensor_temp = data['SensorTemp'].astype("float")
 # print(sensor_temp)
-print(True + 1)
+line = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x002022-09-17'
+line.decode('UTF-8')
+print(line.strip())
 

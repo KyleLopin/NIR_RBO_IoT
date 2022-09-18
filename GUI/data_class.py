@@ -18,8 +18,10 @@ import tkinter as tk  # typehinting
 
 # installed libraries
 import numpy as np
+
 # local files
 import global_params
+import helper_functions
 import model
 
 MAX_DATA_PTS = 600
@@ -434,12 +436,8 @@ class TimeStreamData:
         print(f"data_pkt: {data_pkt}")
         if type(data_pkt) is not dict:
             return 204  # TODO: sometimes an int gets in here.  look at sensor code to fix
-        if "Info" in data_pkt:  # is database information
-            device = data_pkt["Info"]["device"]
-            # time = datetime.strptime(data_pkt[TIME_KEYWORD], "%H:%M:%S").time()
-            time = data_pkt[TIME_KEYWORD]
-            data_pkt = data_pkt["Info"]
-            data_pkt["time"] = time
+        # if data is from a database, it has to be converted first
+        data_pkt = helper_functions.check_database_info(data_pkt)
         # refactoring the project to remove all 'device's
         if "device" in data_pkt:
             position = data_pkt["device"].strip()
@@ -448,7 +446,6 @@ class TimeStreamData:
         else:
             print("No 'device' or 'position' in data_pkt")
             return 200
-        device = global_params.POSITIONS[position]
         if position not in self.positions:
             self.add_device(position)
         device_data = self.positions[position]  # type: DeviceData
@@ -481,13 +478,13 @@ class TimeStreamData:
             self.already_asked_for_data = True
             self.root_app.after(5*60000, self.clear_ask_for_data_flag)
             missing_pkt = self.find_next_missing_pkts(device_data, int(data_pkt["packet_id"]))
-            print(f"ask for packet2: {missing_pkt} from device: {device}")
+            print(f"ask for packet2: {missing_pkt} from position: {position}")
             
-            self.connection.ask_for_stored_data(device, missing_pkt)
+            self.connection.ask_for_stored_data(position, missing_pkt)
             device_data.ask_for_missing_packets = False
 
         if "Raw_data" in data_pkt and save_data:
-            self.master_graph.update_spectrum(data_pkt["Raw_data"], device)
+            self.master_graph.update_spectrum(data_pkt["Raw_data"], position)
 
         if not self.update_after:
             self.update_after = self.root_app.after(500, lambda: self.update_graph(position))

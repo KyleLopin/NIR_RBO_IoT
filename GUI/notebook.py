@@ -90,11 +90,10 @@ class Notebook(tk.Frame):
             self.update_av(data.time_series,
                            data.av, position)
 
-    def update_spectrum(self, raw_data, device):
-        # print("TODO: make spectrum tab")
-        
+    def update_spectrum(self, raw_data, position):
+        # TODO: convert the models from device to positions
+        device = POSITIONS[position]
         print("ff", self.refl_plots.keys(), device)
-        position = DEVICES[device]
         reference_data = MODEL_INFO[device]["Ref Intensities"]
         reflectance_data = divide(raw_data, reference_data)
         self.refl_plots[position].update(WAVELENGTHS,
