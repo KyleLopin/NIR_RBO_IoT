@@ -95,11 +95,11 @@ class ConnectionClass:
         self.client.on_unsubscribe = self._on_unsubscribe
 
     def start_conn(self):
-        self.loop = self.master.after(2000, self.start_conn)
+        self.loop = self.master.after(15000, self.start_conn)
         # print(f"loop client: {self._connected}")
         if not self._connected:
             self._connect()
-        self.client.loop(timeout=0.1)
+        self.client.loop(timeout=10)
 
     def stop_conn(self):
         self.master.after_cancel(self.loop)
@@ -353,10 +353,10 @@ class ConnectionClass:
             self.mqtt_server_index = (self.mqtt_server_index + 1) % len(self.mqtt_servers)
         print(f"connecting to: {mqtt_server_name}")
         try:
-            result = self.client.connect(mqtt_server_name, 1883, 15)
+            result = self.client.connect(mqtt_server_name, 1883, 60)
             print(f"mqtt result: {result}")
-            # if result == 0:
-            #     self._connected = True
+            if result == 0:
+                print("Subscribing")
         except Exception as e:
             print(f"connection error: {e}")
             print(type(e))

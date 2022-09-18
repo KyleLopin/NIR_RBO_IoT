@@ -26,7 +26,7 @@ MAX_DATA_PTS = 600
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 # FACTORY_DIR = "C:\Users\nirsb\OneDrive - Surin Bran Oil Co.,Ltd\Documents\Refine Process NIR\Data"
-FACTORY_DIR = os.path.join("C:", "Users", "nirsb", "OneDrive - Surin Bran Oil Co.,Ltd",
+FACTORY_DIR = os.path.join("C:", os.sep, "Users", "nirsb", "OneDrive - Surin Bran Oil Co.,Ltd",
                            "Documents", "Refine Process NIR", "Data")
 TIME_KEYWORD = "Datetime"
 CPUTEMP_KEYWORD = "CPUTemp"
@@ -466,6 +466,8 @@ class TimeStreamData:
             elif packet_datetime == device_data.today - timedelta(days=1):
                 # old data was recieved, just ignore it rather than figure out if its needed
                 print("Ignoring old data")
+                print(f"save file: {self.save_file}")
+                print(f"packet data: {packet_date}, current date: {current_date}")
                 return 201  # testing unit code
 
         data_pkt = device_data.add_data_pkt(data_pkt, self.models)
