@@ -16,7 +16,7 @@ __location__ = os.path.realpath(
 DATA_FOLDER = os.path.join(__location__, "data")
 
 
-def get_missing_data_in_files(position, remote_data: list):
+def get_data_needed(position, remote_data: list):
     data_needed = []
     for filename, packets_in_remote in remote_data:
         # print(data)
@@ -46,9 +46,9 @@ def get_packets(position, file, num_packets):
     with open(file, 'r') as _file:
         for line in _file.readlines():
             split_line = line.split(",")
-            if "device" in line:  # first line
+            if "device_number" in line:  # first line
                 for i, item in enumerate(split_line):
-                    if "device" in item:
+                    if "device_number" in item:
                         device_index = i
                     elif "packet" in item:
                         packet_index = i
@@ -69,4 +69,4 @@ def find_data_files():
 
 
 if __name__ == "__main__":
-    get_missing_data_in_files("position 1", [["2021-12-06.csv", "2000"]])
+    get_data_needed("position 1", [["2021-12-06.csv", "2000"]])

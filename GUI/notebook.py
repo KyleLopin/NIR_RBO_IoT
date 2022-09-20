@@ -91,7 +91,7 @@ class Notebook(tk.Frame):
                            data.av, position)
 
     def update_spectrum(self, raw_data, position):
-        # TODO: convert the models from device to positions
+        # TODO: convert the models from device_number to positions
         device = POSITIONS[position]
         print("ff", self.refl_plots.keys(), device)
         reference_data = MODEL_INFO[device]["Ref Intensities"]

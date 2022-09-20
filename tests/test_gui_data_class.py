@@ -60,7 +60,7 @@ class TestDataClass(unittest.TestCase):
                         shallow=False),
             msg="Sorted file is not correct after loading and resaving")
 
-        # make sure the packet ids are stored in the device data correctly
+        # make sure the packet ids are stored in the device_number data correctly
         self.assertListEqual(dc.positions['position 2'].packet_ids,
                              CORRECT_PACKET_IDS, msg="packet_ids not correct")
 
@@ -73,13 +73,13 @@ class TestDataClass(unittest.TestCase):
         # test if add_data will ignore data from a previous date
         today = datetime.today()
         yesterday = (today - timedelta(days=1)).date()
-        data_pkt = {"device": "position 2", "date": yesterday.strftime("%Y-%m-%d")}
+        data_pkt = {"device_number": "position 2", "date": yesterday.strftime("%Y-%m-%d")}
         error_code_tomorrow = dc.add_data(data_pkt)
         self.assertEqual(error_code_tomorrow, 201, msg="Not recognizing that the data is old")
 
         # test if add_data will update to a new day if received a packet with a new days date
         device_data.today = yesterday  # change data to yesterday to test
-        data_pkt = {"device": "position 2", "date": today.date().strftime("%Y-%m-%d")}
+        data_pkt = {"device_number": "position 2", "date": today.date().strftime("%Y-%m-%d")}
         dc.add_data(data_pkt)
         self.assertEqual(device_data.today, today.date(),
                          msg="data class does not update to the current date correctly")

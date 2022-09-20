@@ -31,8 +31,8 @@ CA_PATH = "certs/Amazon-root-CA-1.pem"
 CERT_PATH = "certs/device.pem.crt"
 KEY_PATH = "certs/private.pem.key"
 
-DATA_TOPIC = "device/+/data"
-CONTROL_TOPIC = "device/+/control"
+DATA_TOPIC = "device_number/+/data"
+CONTROL_TOPIC = "device_number/+/control"
 DEVICES = ["device_1", "device_2", "device_3"]
 POSITIONS = global_params.POSITIONS
 
@@ -94,7 +94,7 @@ class AWSConnectionMQTT2:
             self.mqttc.subscribe(CONTROL_TOPIC)
             print("Subscribed")
             self.check_connections()
-            # self.mqttc.publish("device/device_1/data", "OFF")
+            # self.mqttc.publish("device_number/device_1/data", "OFF")
         self.mqttc.loop_start()
 
     def _on_connection(self, client, userdata, flags, rc):
@@ -137,15 +137,15 @@ class AWSConnectionMQTT2:
             self.check_connection(device)
 
     def check_connection(self, device):
-        topic = f"device/{device}/control"
+        topic = f"device_number/{device}/control"
         self.publish(topic, '{"status": "check"}')
 
     def start_device(self, device):
-        topic = f"device/{device}/control"
+        topic = f"device_number/{device}/control"
         self.publish(topic, '{"command": "start"}')
 
     def stop_device(self, device):
-        topic = f"device/{device}/control"
+        topic = f"device_number/{device}/control"
         self.publish(topic, '{"command": "stop"}')
 
     def publish(self, topic, message):

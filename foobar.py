@@ -70,13 +70,13 @@ import pandas as pd
 # with open("sensor_settings.json", "r") as _file:
 #     data = json.load(_file)
 # # print(data.keys())
-# for device in data.keys():
-#     print(device)
-#     data[device]["pt scans"] = 100
-#     data[device]["scan avgs"] = 60
-#     for key in data[device].keys():
-#         print(device, key)
-#         print(data[device][key])
+# for device_number in data.keys():
+#     print(device_number)
+#     data[device_number]["pt scans"] = 100
+#     data[device_number]["scan avgs"] = 60
+#     for key in data[device_number].keys():
+#         print(device_number, key)
+#         print(data[device_number][key])
 # with open("sensor_settings.json", "w") as _file:
 #     json.dump(data, _file)
 # LOAD JSON ===============
@@ -97,8 +97,8 @@ import pandas as pd
 #             "sg_polyorder": 2, "sg_deriv": 0,
 #             "use_aws": False, "aws_send_raw": False}
 # new_model = {}
-# for device in ["position 1", "position 2", "position 3"]:
-#     new_model[device] = settings
+# for device_number in ["position 1", "position 2", "position 3"]:
+#     new_model[device_number] = settings
 #
 # with open("sensor_settings.json", "w") as _file:
 #     json.dump(new_model, _file)
@@ -160,7 +160,7 @@ import pandas as pd
 # print(b[-5:])
 # print(np.array(a[-5:]).mean())
 # print(np.array(b[-5:]).mean())
-# RAW_DATA_HEADERS = ["time", "device", "OryConc"]
+# RAW_DATA_HEADERS = ["time", "device_number", "OryConc"]
 # RAW_DATA_HEADERS.extend([str(i) for i in range(1350, 1651)])
 #
 # print(RAW_DATA_HEADERS[:3])

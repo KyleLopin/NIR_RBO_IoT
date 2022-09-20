@@ -82,9 +82,9 @@ def get_position_data(_full_data, position):
     position = position.encode('utf-8')
     print(f"get position data: {position}")
     # print(_full_data)
-    # print(np.unique(_full_data["device"]))
-    # print(position in np.unique(_full_data["device"]))
-    pos_data = _full_data[_full_data["device"] == position]
+    # print(np.unique(_full_data["device_number"]))
+    # print(position in np.unique(_full_data["device_number"]))
+    pos_data = _full_data[_full_data["device_number"] == position]
 
     # print(pos_data)
     return sort_position_data(pos_data)
@@ -127,7 +127,7 @@ def load_saved_file(filename, data_struct: data_class.TimeStreamData):
 
 def load_position_data(_data: data_class.TimeStreamData,
                        _pos: str, _data_struct: data_class.DeviceData):
-    pos_data = _data[_data["device"] == _pos.encode('utf-8')]
+    pos_data = _data[_data["device_number"] == _pos.encode('utf-8')]
     # print("pos data: ")
     # print(pos_data)
     if pos_data.shape[0] == 0:

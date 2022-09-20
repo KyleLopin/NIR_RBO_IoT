@@ -16,7 +16,7 @@ client_id = "test-" + str(uuid4())
 port = 8883
 
 root_ca = "./certs/Amazon-root-CA-1.pem"
-cert = "./certs/device.pem.crt"
+cert = "./certs/device_number.pem.crt"
 key = "./certs/private.pem.key"
 
 

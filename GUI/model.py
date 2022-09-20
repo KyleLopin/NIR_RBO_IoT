@@ -33,11 +33,11 @@ class Models:
         # print(json_data)
         self.models = dict()
         for device in devices:
-            # print(f"device: {device}")
-            # print(json_data[device])
-            # for key in json_data[device].keys():
-            #     print(f"{key}, {len(json_data[device][key])}")
-            #     print(f"{json_data[device][key]}")
+            # print(f"device_number: {device_number}")
+            # print(json_data[device_number])
+            # for key in json_data[device_number].keys():
+            #     print(f"{key}, {len(json_data[device_number][key])}")
+            #     print(f"{json_data[device_number][key]}")
             self.models[device] = Model(json_data[device])
 
     def fit(self, raw_data, device):

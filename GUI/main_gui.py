@@ -1,4 +1,4 @@
-# Copyright (c) 2019 Kyle Lopin (Naresuan University) <kylel@nu.ac.th>
+# Copyright (c) 2022 Kyle Lopin (Naresuan University) <kylel@nu.ac.th>
 
 """
 
@@ -13,7 +13,7 @@ import logging
 import os
 import sys
 import tkinter as tk
-# installed libraries
+
 # local files
 import connection
 import data_class
@@ -62,15 +62,13 @@ class RBOGUI(tk.Tk):
     def __init__(self, parent=None):
         tk.Tk.__init__(self, parent)
         self.today = datetime.today().strftime("%Y-%m-%d")
-        # self.graph = graph.TimeSeriesPlotter(self)
         self.graphs = notebook.Notebook(self)
         self.graphs.pack(expand=True)
         print("making data in main")
         self.data = data_class.TimeStreamData(self)
 
-        # check what time stamps for each device we have received
+        # check what time stamps for each device_number we have received
         self.check_previous_data()
-        # self.graph.add_data_class(self.data)
         self.graphs.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
         self.info = info_frame.InfoFrame(self, POSITIONS)
         self.info.pack(side=tk.BOTTOM)
@@ -82,21 +80,8 @@ class RBOGUI(tk.Tk):
             self.connection2 = mock_conn.MockConn(self, data=self.data,
                                                   name="position 3", rate=50)
         else:
-            # self.connection = connection.AWSConnectionMQTT(self, self.data)
-            # database = aws_connection.AWSConnectionDB(self, self.data)
-            # database.read_today()
-            # self.connection = mqtt_local_server.LocalMQTTServer(self, self.data)
-            #             self.connection = connection.LocalMQTTServer(self, self.data)
-            try:
-                self.connection = connection.LocalMQTTServer(self, self.data)
-            except Exception as error:
-                print(f"error on mqtt connection of {error}")
-                self.connection = None
-            # if self.connection:
-            #     print("Using local MQTT server")
-            # else:
-            #     self.connection = connection.AWSConnectionMQTT(self, self.data)
-
+            print(f"root dir {dir(self)}")
+            self.connection = connection.ConnectionClass(self, self.data)
         self.data.add_connection(self.connection)
         self.info.add_connection(self.connection)
         menubar = option_menu.NIRMenu(self)
@@ -170,7 +155,7 @@ class RBOGUI(tk.Tk):
         went to sleep"""
         self.loop = self.after(10000, self.maintain_mqtt_connact)
         # TODO: fill in
-        topic = "device/hub/status"
+        topic = "device_number/hub/status"
         msg = "check"
         print("MQTT check")
         self.mqtt_broker_checkin += 1
@@ -184,7 +169,7 @@ class RBOGUI(tk.Tk):
             self.connect_mqtt()
 
     def save_data(self, data_type, device):
-        print(f"saving data |{data_type}| for device: {device}")
+        print(f"saving data |{data_type}| for device_number: {device}")
         _file = tk.filedialog.asksaveasfile(mode='w', defaultextension=".csv")
         if _file is None:  # asksaveasfile return `None` if dialog closed with "cancel".
             return

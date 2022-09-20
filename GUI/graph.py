@@ -119,21 +119,21 @@ class TimeSeriesPlotter(tk.Frame):
         self.temp_labels = {}
         for i, device in enumerate(DEVICES.keys()):
             self.data[device] = [[], [], []]
-            # self.devices[device] = SensorInfoFrame(sensor_frame,
-            #                                        parent, device)
-            # self.devices[device].pack(side=tk.LEFT, fill=tk.X)
+            # self.devices[device_number] = SensorInfoFrame(sensor_frame,
+            #                                        parent, device_number)
+            # self.devices[device_number].pack(side=tk.LEFT, fill=tk.X)
 
-            # tk.Label(temp_frame, text=f"{DEVICES[device]} temperature:",
+            # tk.Label(temp_frame, text=f"{DEVICES[device_number]} temperature:",
             #          bg="white").pack()
             self.temp_labels[device] = []
             for i in range(2):
-                # self.temp_labels[device][i].set("No Temp read")
+                # self.temp_labels[device_number][i].set("No Temp read")
                 _l = tk.Label(temp_frame, bg="white",
                               text="No Temp read")
                 # _l.pack(side=tk.TOP)
                 self.temp_labels[device].append(_l)
 
-            # self.devices[device].pack()
+            # self.devices[device_number].pack()
         # sensor_frame.pack(side=tk.BOTTOM, fill=tk.X)
         # makes temperature labels
         temp_frame.pack(side=tk.LEFT, fill=tk.Y)
@@ -170,7 +170,7 @@ class TimeSeriesPlotter(tk.Frame):
                 # if av_roll:
                 #     self.av_mean, = self.av_axis.plot(time,
                 #           av_roll, "--",
-                #           color=COLORS[device], alpha=ROLL_ALPHA)
+                #           color=COLORS[device_number], alpha=ROLL_ALPHA)
 
             self.lines[device], = self.axis.plot(self.data[device][0],
                            self.data[device][1], "-o", alpha=LINE_ALPHA,
@@ -178,11 +178,11 @@ class TimeSeriesPlotter(tk.Frame):
             # if av:
             #     self.av_line, = self.av_axis.plot(time,
             #                av, "-o", alpha=LINE_ALPHA,
-            #                label=device, color=COLORS[device])
+            #                label=device_number, color=COLORS[device_number])
 
             self.axis.legend(prop={'size': LABEL_SIZE})
         else:
-            # print(self.lines[device])
+            # print(self.lines[device_number])
             self.lines[device].set_ydata(conc)
             self.lines[device].set_xdata(time)
             self.mean_lines[device].set_ydata(rolling)
@@ -234,8 +234,8 @@ class TimeSeriesPlotter(tk.Frame):
         self.canvas.draw()
 
     # def add_connection(self, _connection):
-    #     for device in DEVICES.keys():
-    #         self.devices[device].add_connection(_connection)
+    #     for device_number in DEVICES.keys():
+    #         self.devices[device_number].add_connection(_connection)
 
     def position_online(self, position,
                         running: bool):
@@ -543,14 +543,14 @@ class SensorInfoFrame(tk.Frame):
         print(f"checking device at {self.position}")
         device = self.position
         if self.sensor_state == SENSOR_OFFLINE:
-            # check if the device is connected yet
+            # check if the device_number is connected yet
             self.conn.check_connection(device)
         elif self.sensor_state == SENSOR_NOT_READING:
-            # start the device reading
+            # start the device_number reading
             self.conn.start_device(device)
 
         elif self.sensor_state == SENSOR_READING:
-            # start the device reading
+            # start the device_number reading
             self.conn.stop_device(device)
 
     def update_online_status_labels(self):
@@ -595,7 +595,7 @@ class SensorInfoFrame(tk.Frame):
 
     def add_connection(self, device_connection):
         self.conn = device_connection
-        # send message to the device
+        # send message to the device_number
         # to see who is online when the gui starts
         try:
             self.conn.check_connection(self.position)
@@ -643,25 +643,25 @@ class SensorInfoFrame(tk.Frame):
 #             self.sensor_states[position] = SENSOR_OFFLINE  # just assume and check later
 #
 #     def check_device(self, position):
-#         print(f"checking device at {position}")
-#         device = DEVICES[position]
+#         print(f"checking device_number at {position}")
+#         device_number = DEVICES[position]
 #         if self.sensor_states[position] == SENSOR_OFFLINE:
-#             # check if the device is connected yet
-#             self.conn.check_connection(device)
+#             # check if the device_number is connected yet
+#             self.conn.check_connection(device_number)
 #         elif self.sensor_states[position] == SENSOR_NOT_READING:
-#             # start the device reading
-#             self.conn.start_device(device)
+#             # start the device_number reading
+#             self.conn.start_device(device_number)
 #
 #         elif self.sensor_states[position] == SENSOR_READING:
-#             # start the device reading
-#             self.conn.stop_device(device)
+#             # start the device_number reading
+#             self.conn.stop_device(device_number)
 #
 #     def update_online_status_labels(self):
 #         """ Thread that will restart itself every 65 seconds
 #          to go through all the positions and check if they have sent data
 #          since the last check-in.
 #          Check in interval should be longer than reading interval."""
-#         print("Updating device status")
+#         print("Updating device_number status")
 #         # self.thread = threading.Timer(65, self.update_online_status_labels)
 #         # self.thread.start()
 #         self.master.after(65000, self.update_online_status_labels)

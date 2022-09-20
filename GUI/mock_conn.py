@@ -83,9 +83,9 @@ class MockConn(connection.ConnectionClass):
         pkt = {'date': today}
         pkt["time"] = now
         pkt["Raw_data"] = data
-        pkt["device"] = self.name
+        pkt["device_number"] = self.name
         pkt["OryConc"] = self.period
-        mock_msg = MSG(pkt, "device/device_2_data")
+        mock_msg = MSG(pkt, "device_number/device_2_data")
         self._on_message("", "", mock_msg)
 
     def make_mock_data(self):

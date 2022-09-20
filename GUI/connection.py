@@ -1,4 +1,4 @@
-# Copyright (c) 2019 Kyle Lopin (Naresuan University) <kylel@nu.ac.th>
+# Copyright (c) 2022 Kyle Lopin (Naresuan University) <kylel@nu.ac.th>
 
 """
 
@@ -12,16 +12,18 @@ from datetime import datetime
 import json
 import logging
 import os
-import ssl
 import time
 import tkinter as tk
+
 # installed libraries
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
+
 # local files
 import check_saved_data
 import data_class
 import global_params
+import update_sensor
 
 
 DEVICES = global_params.DEVICES.keys()
@@ -32,35 +34,59 @@ SETTINGS_KEYS = ["use_snv", "use_sg", "sg_window",
                  "sg_polyorder", "sg_deriv"]
 logger = logging.getLogger(__name__)
 
-# MQTT_SERVER = "localhost"
-# MQTT_SERVER = "192.168.1.52"
 MQTT_LOCALHOST = "localhost"
 MQTT_SERVER = "MQTTBroker.local"
-# MQTT_SERVER = "192.168.1.105"
-MQTT_PATH_LISTEN = "device/+/data"
-MQTT_STATUS_CHANNEL = "device/+/status"
+MQTT_PATH_LISTEN = "device_number/+/data"
+MQTT_STATUS_CHANNEL = "device_number/+/status"
 # Credentials
 load_dotenv('.env')
-MQTT_USERNAME = os.getenv('MQTT_USERNAME')
-MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
+MQTT_USERNAME = os.getenv('HIVEMQTT_USERNAME')
+MQTT_PASSWORD = os.getenv('HIVEMQTT_PASSWORD')
 MQTT_NAME = os.getenv('MQTT_NAME')
-# MQTT_USERNAME = "MacDaddy"
-# MQTT_PASSWORD = "MacPass"
-# MQTT_NAME = "MacDaddy"
+HIVEMQTT_USERNAME = os.getenv('HIVEMQ_USERNAME')
+HIVEMQTT_PASSWORD = os.getenv('HIVEMQ_PASSWORD')
+HIVEMQTT_SERVER = os.getenv('HIVEMQ_URL')
+
 MQTT_VERSION = mqtt.MQTTv311
 
-AWS_MQTT_HOST = "a25h8mlp62407w-ats.iot.ap-southeast-1.amazonaws.com"
-AWS_MQTT_PORT = 8883
+DATA_TOPIC = "device_number/+/data"
+CONTROL_TOPIC = "device_number/+/control"
 
-CA_PATH = "certs/Amazon-root-CA-1.pem"
-CERT_PATH = "certs/device.pem.crt"
-KEY_PATH = "certs/private.pem.key"
-
-DATA_TOPIC = "device/+/data"
-CONTROL_TOPIC = "device/+/control"
+HIVEMQTT_PATH_LISTEN = "deviceHIVEMQ/+/data"
+HIVEMQTT_STATUS_CHANNEL = "deviceHIVEMQ/+/status"
 
 
 class ConnectionClass:
+    """
+    Handle all high level MQTT communications, including make and handling
+    multiple servers and their priorities of communication.
+    """
+    def __init__(self, root: tk.Tk, data: data_class.TimeStreamData):
+        """
+        Hardwired to use mosquitto as default and to fall back to HIVEMQ when
+        local mosquitto MQTT is not working.
+
+        Args:
+            root (tk.Tk):  root application, needed for base communication
+            data (data_class.TimeStreamData):  data class to pass received data to
+        """
+        # the communications can be different, but it sends the data to the same place
+        self.local_mqtt = LocalMQTTServer(root, data)
+        self.hivemqtt = HIVEMQConnection(root, data)
+
+    def destroy(self):
+        print("destroying local mqtt")
+        self.local_mqtt.destroy()
+        print("destroying HIVE mqtt")
+        self.hivemqtt.destroy()
+
+
+class BaseConnectionClass:
+    """
+    This class will handle base mqtt communications.  It needs a child class to
+    implement the details of the specific mqtt, i.e. password and username,
+    server address
+    """
     def __init__(self, master: tk.Tk,
                  client_name, data=None,
                  mqtt_version=MQTT_VERSION):
@@ -68,7 +94,7 @@ class ConnectionClass:
             self.data = data
         else:
             print("making connection in connection.py")
-            self.data = data_class.TimeStreamData(master.graph)
+            self.data = data_class.TimeStreamData(master)
         self.master = master
         self.loop = None
         self.found_server = False
@@ -80,8 +106,15 @@ class ConnectionClass:
         self.client.on_message = self._on_message
         self.client.on_subscribe = self._on_subscribe
         self.client.on_unsubscribe = self._on_unsubscribe
+        self.update_module = update_sensor.SensorChecker(self, self.data)
 
     def start_conn(self):
+        """
+        Start a connection and keep it looping
+
+        Returns:  None
+
+        """
         self.loop = self.master.after(15000, self.start_conn)
         # print(f"loop client: {self._connected}")
         if not self._connected:
@@ -96,7 +129,7 @@ class ConnectionClass:
         print("Got message:", msg.topic, msg.payload)
         device = msg.topic.split("/")[1]
 
-        # print(f"message from device: {device}")
+        # print(f"message from device_number: {device_number}")
         if "hub" not in device:
             position = global_params.DEVICES[device]
             self.master.info.check_in(position)
@@ -121,90 +154,56 @@ class ConnectionClass:
             if "status" in msg_dict:
                 self.parse_mqtt_status(msg_dict)
             if 'saved files' in msg_dict:
-                data_needed = check_saved_data.get_missing_data_in_files(device, msg_dict["saved files"])
+                data_needed = check_saved_data.get_data_needed(device,
+                                                               msg_dict["saved files"])
                 pkt = {"command": "send old data",
                        "data needed": data_needed}
                 self.send_command(device, pkt)
 
     def parse_mqtt_status(self, packet):
+        """
+        This parses a mqtt packet from the status channel, with a status command
+        in the packet also.  This handles status updates for:
+        Update if the device is running or not
+        Update the number of packets the sensor has sent
+        Check if model parameters are up to date - NOT TESTED YET
+
+        Args:
+            packet (dict): JSON mqtt data packet
+
+        Returns: None
+
+        """
         position = packet["status"]
         if position in POSITIONS:
-            # print("check 1")
             if "running" in packet:
                 self.master.info.position_online(position,
                                                  packet["running"])
             if "packets sent" in packet:
-                # position is in the position format now
                 self.data.update_latest_packet_id(position,
                                                   packet["packets sent"])
-                # self.update_model(POSITIONS[position])
-                # if packet["packets sent"] > 0:
-                #     self.data.check_missing_packets(position, packet["packets sent"])
             if "model params" in packet:
-                print("model params recieved")
-                print(packet)
                 # check if data from sensor is same as sent
-                model_correct = self.check_model(position, packet)
+                model_correct = self.update_module.check_model(position, packet)
                 if not model_correct:
                     print("Error checking model, please reload")
+                    # TODO: reload the model
 
-    def check_model(self, position, sensor_model):
-        # get the stored model
-        with open("new_models.json", "r") as _file:
-            data = json.load(_file)
-        data = data[position]
-        print(f"Master model params:")
-        for key in MODEL_KEYS:
-            print(key)
-            print(data[key])
-            if data[key] != sensor_model[key]:
-                return False
-        # if all data and sensor models are the same,
-        # everything is all good, hopefully
-        device = global_params.POSITIONS[position]
-        print("Model correct")
-        if device in self.data.devices:
-            self.data.devices[device].model_checked = True
-            return True
-        return False  # no device
+    def ask_for_stored_data(self, position, pkt_nums):
+        """
+        Ask a sensor to send old data that it has saved.
 
-    def ask_for_model(self):
-        _topic = f"device/{device}/control"
-        _message = '{"command": "send model"}'
-        self.publish(_topic, _message, qos=0)
+        Args:
+            position (str): position name, ie "position 2"
+            pkt_nums (list): list of packet numbers to send
 
-    def check_settings(self, position, sensor_model):
-        # get the stored model
-        with open("sensor_settings.json", "r") as _file:
-            data = json.load(_file)
-        data = data[position]
-        print(f"Master model params:")
-        for key in MODEL_KEYS:
-            print(key)
-            print(data[key])
-            if data[key] != sensor_model[key]:
-                return False
-        # if all data and sensor models are the same,
-        # everything is all good, hopefully
-        device = global_params.POSITIONS[position]
-        print("Model correct")
-        if device in self.data.devices:
-            self.data.devices[device].model_checked = True
-            return True
-        return False  # no device
+        Returns: None, the sensor will respond and the on_message
+        callback will handle the rest
 
-    def ask_for_settings(self, position):
-        device = DEVICES[position]
-        _topic = f"device/{device}/control"
-        _message = '{"command": "send sensor settings"}'
-        self.publish(_topic, _message, qos=1)
-
-    def ask_for_stored_data(self, device, pkt_num):
-        # TODO: device should be position now
-        if device not in DEVICES:
-            device = POSITIONS[device]
-        _topic = f"device/{device}/control"
-        _message = f'{{"command": "send packet", "packet numbers": {pkt_num}}}'
+        """
+        device = POSITIONS[position]
+        _topic = f"device_number/{device}/control"
+        _message = f'{{"command": "send packet", "packet numbers": {pkt_nums}}}'
         self.publish(_topic, _message, qos=0)
 
     def parse_mqtt_data(self, packet):
@@ -254,14 +253,14 @@ class ConnectionClass:
         client.subscribe(MQTT_STATUS_CHANNEL, qos=0)
 #         self.client.loop_start()
 
-    def _on_disconnect(self, client, userdata, rc):
+    def _on_disconnect(self, client, userdata, rc, flag):
         self._connected = False
-        print(f"Disconnected client: {client} with rc: {rc}")
-        print(f"disconnection time: {datetime.now().strftime('%H:%M:%S')}")
-        
+        print(f"Disconnected client: {client}, data: {userdata}, "
+              f"rc: {rc}, flag: {flag}")
+
     def _on_subscribe(self, client, userdata, flag, rc):
         print("Subscribed:", client, userdata, flag, rc)
-        
+
     def _on_unsubscribe(self, client, userdata, flag, rc):
         print("unsubscribed:", client, userdata, flag, rc)
         client.subscribe(MQTT_PATH_LISTEN, qos=0)
@@ -272,13 +271,13 @@ class ConnectionClass:
         will respond to check if the sensor is on """
         print("checking connections")
         for device in DEVICES:
-            print(f"check device: {device}")
+            print(f"check device_number: {device}")
             self.check_connection(device)
 
     def check_connection(self, device):
         if device not in DEVICES:
             device = POSITIONS[device]
-        topic = f"device/{device}/control"
+        topic = f"device_number/{device}/control"
         self.publish(topic, '{"status": "check"}', qos=0)
         # the response will be picked up by the on message
         # method and that will handle the rest of updating
@@ -287,54 +286,25 @@ class ConnectionClass:
     def start_device(self, device):
         if device not in DEVICES:
             device = POSITIONS[device]
-        topic = f"device/{device}/control"
+        topic = f"device_number/{device}/control"
         self.publish(topic, '{"command": "start"}', qos=0)
 
     def stop_device(self, device):
         if device not in DEVICES:
             device = POSITIONS[device]
-        topic = f"device/{device}/control"
+        topic = f"device_number/{device}/control"
         self.publish(topic, '{"command": "stop"}', qos=0)
 
     def is_server_found(self):
         return self.found_server
 
-    def update_models(self):
-        for position in POSITIONS:
-            self.update_model(position)
-
-    def update_model(self, device):
-        with open("new_models.json", "r") as _file:
-            data = json.load(_file)
-        if device not in data:
-            return
-        device_data = data[device]
-
-        device_topic = f"device/{global_params.POSITIONS[device]}/control"
-        update_pkt = {"command": "update model"}
-        for key in device_data.keys():
-            update_pkt[key] = device_data[key]
-        pkt = json.dumps(update_pkt)
-        self.publish(device_topic, pkt, qos=0)
-        print("Done with model")
-
     def send_command(self, device, payload):
-        device_topic = f"device/{device}/control"
+        device_topic = f"device_number/{device}/control"
         if device in global_params.POSITIONS:
-            device_topic = f"device/{global_params.POSITIONS[device]}/control"
+            device_topic = f"device_number/{global_params.POSITIONS[device]}/control"
         if type(payload) is dict:
             payload = json.dumps(payload)
         self.publish(device_topic, payload, qos=0)
-
-    def get_model_params(self, device):
-        device_topic = f"device/{device}/control"
-        pkt = '{"command": "send model"'
-        self.publish(device_topic, pkt, qos=0)
-        # the rest has to be handled in the on_message callback
-
-    def trace_callback(self, var, index, mode):
-        print(f"Trace callback variable: {self._connected.get()}")
-        print(f"var: {var}, index: {index}, mode: {mode}")
 
     def _connect(self):
         print(f"name: {os.name}")
@@ -358,7 +328,7 @@ class ConnectionClass:
                 self.mqtt_servers.remove(mqtt_server_name)
                 self.mqtt_server_index = (self.mqtt_server_index + 1) % len(self.mqtt_servers)
             self._connected = False
-    
+
     def destroy(self):
         print("destroying connection")
         self.client.loop_stop()
@@ -366,11 +336,12 @@ class ConnectionClass:
         self.client.disconnect()
 
 
-class LocalMQTTServer(ConnectionClass):
+class LocalMQTTServer(BaseConnectionClass):
     def __init__(self, master: tk.Tk, data=None):
         print(f"connecting with name: {MQTT_NAME}")
-        ConnectionClass.__init__(self, master,
-                                 MQTT_NAME, data=data)
+        # BaseConnectionClass.__init__(self, master,
+        #                              MQTT_NAME, data=data)
+        super().__init__(master, data)
         if os.name != "posix":  # this is tnot the mqtt broker
             self.mqtt_server_index = 0
             self.mqtt_servers = [MQTT_SERVER]
@@ -378,7 +349,7 @@ class LocalMQTTServer(ConnectionClass):
             # get all dynamic ips to test
             all_ips = os.popen('arp -a')
             for ip in all_ips:
-                if 'dynamic' in ip:  # this could be the rpi mqtt broker
+                if 'dynamic' in ip:  # this could be the raspberry pi MQTT broker
                     print(f"dynamic ip: {ip}")
                     print(ip.split()[0])
                     self.mqtt_servers.append(ip.split()[0])
@@ -391,28 +362,58 @@ class LocalMQTTServer(ConnectionClass):
 #         self.client.loop_start()
 
 
-class AWSConnectionMQTT(ConnectionClass):
+class HIVEMQConnection(BaseConnectionClass):
     def __init__(self, master: tk.Tk, data=None):
-        ConnectionClass.__init__(self, master,
-                                 "AWS", data=data)
-        self.client.tls_set(CA_PATH,
-                            certfile=CERT_PATH,
-                            keyfile=KEY_PATH,
-                            cert_reqs=ssl.CERT_REQUIRED,
-                            tls_version=ssl.PROTOCOL_TLSv1_2,
-                            ciphers=None)
-        print("AWS init")
-        result = self.client.connect(AWS_MQTT_HOST,
-                                     port=AWS_MQTT_PORT,
-                                     keepalive=60)
-        print(f"mqtt result={result}")
-        # self.client.subscribe(CONTROL_TOPIC)  # hack for now
-        self.start_conn()
+        BaseConnectionClass.__init__(self, master,
+                                     "", data=data,
+                                     mqtt_version=mqtt.MQTTv5)
+        self.client.tls_set(tls_version=mqtt.ssl.PROTOCOL_TLS)
+        self.client.username_pw_set(username=HIVEMQTT_USERNAME,
+                                    password=HIVEMQTT_PASSWORD)
+        self._connect()
+
+    def _connect(self):
+        print("Trying to connect to HIVEMQ Server")
+        try:
+            result = self.client.connect(HIVEMQTT_SERVER, 8883)
+            print(f"HIVEMQ mqtt result: {result}")
+        except Exception as e:
+            print(f"HIVEMQ connection error: {e}")
+
+    def _on_connection(self, client, userdata, flags, rc):
+        if rc != 0:
+            print(f"HIVEMQ error on connect flag: {rc}")
+            return
+        print(f"MQTT connected with client {client}, data: {userdata}, flags:{flags}, rc: {rc}")
+        if self._connected:
+            print(f"Already connected: {self._connected}")
+            return
+        self._connected = True
+        if not self.found_server:
+            print("HIVEMQ checking connections")
+            self.check_connections()
+        self.found_server = True
+        client.subscribe(HIVEMQTT_PATH_LISTEN, qos=2)
+        client.subscribe(HIVEMQTT_STATUS_CHANNEL, qos=0)
+
+    def _on_disconnect(self, *args):
+        print("HIVEMQ Disconnect")
+        print(args)
+        super(HIVEMQConnection, self)._on_disconnect(*args)
+
+    def _on_subscribe(self, **kwargs):
+        print("HIVEMQ Subscribe")
+        super()._on_subscribe(**kwargs)
+
+    def _on_unsubscribe(self, client, userdata, flag, rc):
+        print("HIVEMQ Unsubscribe")
+        client.subscribe(HIVEMQTT_PATH_LISTEN, qos=2)
+        client.subscribe(HIVEMQTT_STATUS_CHANNEL, qos=0)
 
 
 if __name__ == "__main__":
     mqtt = LocalMQTTServer(None, 1)
     while True:
-        mqtt.publish("device/device_1/data",
+        mqtt.publish("device_number/device_1/data",
                      '{"command": "start"}')
         time.sleep(3)

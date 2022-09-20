@@ -87,14 +87,14 @@ class SensorInfoFrame(tk.Frame):
         print(f"checking device at {self.position}")
         device = self.position
         if self.sensor_state == SENSOR_OFFLINE:
-            # check if the device is connected yet
+            # check if the device_number is connected yet
             self.conn.check_connection(device)
         elif self.sensor_state == SENSOR_NOT_READING:
-            # start the device reading
+            # start the device_number reading
             self.conn.start_device(device)
 
         elif self.sensor_state == SENSOR_READING:
-            # start the device reading
+            # start the device_number reading
             self.conn.stop_device(device)
 
     def update_online_status_labels(self):
@@ -102,7 +102,7 @@ class SensorInfoFrame(tk.Frame):
          to go through all the positions and check if they have sent data
          since the last check-in.
          Check in interval should be longer than reading interval."""
-        # print(f"Updating device status| check in: {self.check_in}")
+        # print(f"Updating device_number status| check in: {self.check_in}")
         # self.thread = threading.Timer(65, self.update_online_status_labels)
         # self.thread.start()
         self.loop = self.master.after(10000, self.update_online_status_labels)

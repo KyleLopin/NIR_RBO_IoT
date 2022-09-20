@@ -316,7 +316,7 @@ class ChangeScanParams(tk.Toplevel):
         self.geometry("300x300")
         self.title = "Set Scan parameters"
         self.master = master
-        # self.device = global_params.POSITIONS[device]
+        # self.device_number = global_params.POSITIONS[device_number]
         self.device = device
         print(f"got deviec in scan params: {self.device}")
         avg_points, avg_scan, interval = self.get_params(device)
@@ -384,7 +384,7 @@ class ChangeScanParams(tk.Toplevel):
         return int(0.01*self.scan_var.get()*self.pt_var.get()+MIN_SCAN_BUFFER)
 
     def submit(self, device):
-        # device = global_params.POSITIONS[device]
+        # device_number = global_params.POSITIONS[device_number]
         print(f"submitting values {self.pt_var.get()} and {self.scan_var.get()}")
         with open(os.path.join(__location__, "sensor_settings.json"), "r") as _file:
             data = json.load(_file)

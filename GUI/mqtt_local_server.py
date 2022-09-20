@@ -18,10 +18,10 @@ import data_class
 import mock_conn
 
 
-# MQTT_SERVER = "localhost"
-# MQTT_SERVER = "192.168.1.52"
+# HIVEMQTT_SERVER = "localhost"
+# HIVEMQTT_SERVER = "192.168.1.52"
 MQTT_SERVER = "MQTTBroker.local"
-MQTT_PATH_LISTEN = "device/+/data"
+MQTT_PATH_LISTEN = "device_number/+/data"
 MQTT_USERNAME = "GUI MASTER"
 MQTT_PASSWORD = "IamYourFather"
 
@@ -72,11 +72,11 @@ class LocalMQTTServer(mock_conn.ConnectionClass):
         # self.master.graph.update()
 
     def start_device(self, device):
-        topic = f"device/{device}/control"
+        topic = f"device_number/{device}/control"
         self.publish(topic, '{"command": "start"}')
 
     def stop_device(self, device):
-        topic = f"device/{device}/control"
+        topic = f"device_number/{device}/control"
         self.publish(topic, '{"command": "stop"}')
 
 
@@ -84,6 +84,6 @@ class LocalMQTTServer(mock_conn.ConnectionClass):
 if __name__ == "__main__":
     mqtt = LocalMQTTServer(None, 1)
     while True:
-        mqtt.publish("device/device_1/data",
+        mqtt.publish("device_number/device_1/data",
                      '{"command": "start"}')
         time.sleep(3)
