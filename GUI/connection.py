@@ -15,7 +15,6 @@ import os
 import ssl
 import time
 import tkinter as tk
-import traceback
 # installed libraries
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
@@ -42,12 +41,12 @@ MQTT_PATH_LISTEN = "device/+/data"
 MQTT_STATUS_CHANNEL = "device/+/status"
 # Credentials
 load_dotenv('.env')
-# MQTT_USERNAME = os.getenv('MQTT_USERNAME')
-# MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
-# MQTT_NAME = os.getenv('MQTT_NAME')
-MQTT_USERNAME = "MacDaddy"
-MQTT_PASSWORD = "MacPass"
-MQTT_NAME = "MacDaddy"
+MQTT_USERNAME = os.getenv('MQTT_USERNAME')
+MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
+MQTT_NAME = os.getenv('MQTT_NAME')
+# MQTT_USERNAME = "MacDaddy"
+# MQTT_PASSWORD = "MacPass"
+# MQTT_NAME = "MacDaddy"
 MQTT_VERSION = mqtt.MQTTv311
 
 AWS_MQTT_HOST = "a25h8mlp62407w-ats.iot.ap-southeast-1.amazonaws.com"
@@ -63,33 +62,19 @@ CONTROL_TOPIC = "device/+/control"
 
 class ConnectionClass:
     def __init__(self, master: tk.Tk,
-                 client_name, data=None):
+                 client_name, data=None,
+                 mqtt_version=MQTT_VERSION):
         if data:
             self.data = data
         else:
             print("making connection in connection.py")
             self.data = data_class.TimeStreamData(master.graph)
-
-        if os.name != "posix":  # this is tnot the mqtt broker
-            self.mqtt_server_index = 0
-            self.mqtt_servers = [MQTT_SERVER]
-            self.mqtt_server_index = 0
-            # get all dynamic ips to test
-            all_ips = os.popen('arp -a')
-            for ip in all_ips:
-                if 'dynamic' in ip:  # this could be the rpi mqtt broker
-                    print(f"dynamic ip: {ip}")
-                    print(ip.split()[0])
-                    self.mqtt_servers.append(ip.split()[0])
         self.master = master
         self.loop = None
         self.found_server = False
         self._connected = False
         self.client = mqtt.Client(client_name, # clean_session=False,
-                                  protocol=MQTT_VERSION)
-        self.client.username_pw_set(username=MQTT_USERNAME,
-                                    password=MQTT_PASSWORD)
-        print(f"got client {self.client}")
+                                  protocol=mqtt_version)
         self.client.on_connect = self._on_connection
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
@@ -386,8 +371,19 @@ class LocalMQTTServer(ConnectionClass):
         print(f"connecting with name: {MQTT_NAME}")
         ConnectionClass.__init__(self, master,
                                  MQTT_NAME, data=data)
-#         self.client.username_pw_set(username=MQTT_USERNAME,
-#                                     password=MQTT_PASSWORD)
+        if os.name != "posix":  # this is tnot the mqtt broker
+            self.mqtt_server_index = 0
+            self.mqtt_servers = [MQTT_SERVER]
+            self.mqtt_server_index = 0
+            # get all dynamic ips to test
+            all_ips = os.popen('arp -a')
+            for ip in all_ips:
+                if 'dynamic' in ip:  # this could be the rpi mqtt broker
+                    print(f"dynamic ip: {ip}")
+                    print(ip.split()[0])
+                    self.mqtt_servers.append(ip.split()[0])
+        self.client.username_pw_set(username=MQTT_USERNAME,
+                                    password=MQTT_PASSWORD)
         self._connect()
         # self.client.subscribe(CONTROL_TOPIC)  # hack for now
 
