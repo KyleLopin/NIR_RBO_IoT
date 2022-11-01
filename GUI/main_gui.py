@@ -109,7 +109,7 @@ class RBOGUI(tk.Tk):
             print("connecting mqtt")
             if self.connection:
                 self.connection.destroy()
-            self.connection = connection.LocalMQTTServer(self, self.data)
+            self.connection = connection.ConnectionClass(self, self.data)
         except:
             self.connection = None
 

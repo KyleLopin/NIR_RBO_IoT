@@ -4,6 +4,5 @@
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/RBO" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/RBO_v1" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/git" vcs="Git" />
   </component>
 </project>

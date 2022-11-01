@@ -47,6 +47,7 @@ HIVEMQTT_USERNAME = os.getenv('HIVEMQ_USERNAME')
 HIVEMQTT_PASSWORD = os.getenv('HIVEMQ_PASSWORD')
 HIVEMQTT_SERVER = os.getenv('HIVEMQ_URL')
 
+HIVEMQTT_PORT = 8883
 MQTT_VERSION = mqtt.MQTTv311
 
 DATA_TOPIC = "device_number/+/data"
@@ -98,7 +99,7 @@ class BaseConnectionClass:
         self.master = master
         self.loop = None
         self.found_server = False
-        self._connected = False
+        self.connected = False
         self.client = mqtt.Client(client_name, # clean_session=False,
                                   protocol=mqtt_version)
         self.client.on_connect = self._on_connection
@@ -117,8 +118,8 @@ class BaseConnectionClass:
         """
         self.loop = self.master.after(15000, self.start_conn)
         # print(f"loop client: {self._connected}")
-        if not self._connected:
-            self._connect()
+        if not self.connected:
+            self.connect()
         self.client.loop(timeout=10)
 
     def stop_conn(self):
@@ -237,10 +238,10 @@ class BaseConnectionClass:
         print(f"MQTT connected with client {client}, data: {userdata}, flags:{flags}, rc: {rc}")
 #         print(f"self connected value: {self._connected}")
         print(f"connection time: {datetime.now().strftime('%H:%M:%S')}")
-        if self._connected:
-            print(f"Already connected: {self._connected}")
+        if self.connected:
+            print(f"Already connected: {self.connected}")
             return
-        self._connected = True
+        self.connected = True
 #         print(f"self connected value2: {self._connected}")
 
         if not self.found_server:
@@ -251,20 +252,24 @@ class BaseConnectionClass:
         self.found_server = True
         client.subscribe(MQTT_PATH_LISTEN, qos=1)
         client.subscribe(MQTT_STATUS_CHANNEL, qos=0)
+        print("On_connection")
 #         self.client.loop_start()
 
     def _on_disconnect(self, client, userdata, rc, flag):
-        self._connected = False
+        self.connected = False
         print(f"Disconnected client: {client}, data: {userdata}, "
               f"rc: {rc}, flag: {flag}")
 
-    def _on_subscribe(self, client, userdata, flag, rc):
+    def _on_subscribe(self, client, userdata, flag, rc, properties=None):
         print("Subscribed:", client, userdata, flag, rc)
 
     def _on_unsubscribe(self, client, userdata, flag, rc):
         print("unsubscribed:", client, userdata, flag, rc)
         client.subscribe(MQTT_PATH_LISTEN, qos=0)
         client.subscribe(MQTT_STATUS_CHANNEL, qos=0)
+
+    def _on_reconnect(self):
+        print("reconnecting")
 
     def check_connections(self):
         """ Publish a message that the sensor
@@ -306,7 +311,7 @@ class BaseConnectionClass:
             payload = json.dumps(payload)
         self.publish(device_topic, payload, qos=0)
 
-    def _connect(self):
+    def connect(self):
         print(f"name: {os.name}")
         if os.name == "posix":
             # raspberry pi which should be running the
@@ -327,7 +332,7 @@ class BaseConnectionClass:
                 print(f"delete the ip: {mqtt_server_name} from list")
                 self.mqtt_servers.remove(mqtt_server_name)
                 self.mqtt_server_index = (self.mqtt_server_index + 1) % len(self.mqtt_servers)
-            self._connected = False
+            self.connected = False
 
     def destroy(self):
         print("destroying connection")
@@ -355,7 +360,7 @@ class LocalMQTTServer(BaseConnectionClass):
                     self.mqtt_servers.append(ip.split()[0])
         self.client.username_pw_set(username=MQTT_USERNAME,
                                     password=MQTT_PASSWORD)
-        self._connect()
+        self.connect()
         # self.client.subscribe(CONTROL_TOPIC)  # hack for now
 
         self.start_conn()
@@ -367,28 +372,35 @@ class HIVEMQConnection(BaseConnectionClass):
         BaseConnectionClass.__init__(self, master,
                                      "", data=data,
                                      mqtt_version=mqtt.MQTTv5)
-        self.client.tls_set(tls_version=mqtt.ssl.PROTOCOL_TLS)
+
+        self.client.tls_set("isrgrootx1.pem", tls_version=mqtt.ssl.PROTOCOL_TLS)
         self.client.username_pw_set(username=HIVEMQTT_USERNAME,
                                     password=HIVEMQTT_PASSWORD)
-        self._connect()
+        self.connect()
+        self.client.loop_start()
 
-    def _connect(self):
+    def connect(self):
         print("Trying to connect to HIVEMQ Server")
+        print(HIVEMQTT_SERVER)
         try:
-            result = self.client.connect(HIVEMQTT_SERVER, 8883)
+            result = self.client.connect(HIVEMQTT_SERVER, HIVEMQTT_PORT)
             print(f"HIVEMQ mqtt result: {result}")
         except Exception as e:
             print(f"HIVEMQ connection error: {e}")
+        print("end trying to connect to HIVEMQ Server")
 
-    def _on_connection(self, client, userdata, flags, rc):
+    # def _on_connection(self, client, userdata, flags, rc):
+    def _on_connection(self, client, userdata, flags, rc, properties):
+
+        print("HIVE MQ on connection")
         if rc != 0:
             print(f"HIVEMQ error on connect flag: {rc}")
             return
         print(f"MQTT connected with client {client}, data: {userdata}, flags:{flags}, rc: {rc}")
-        if self._connected:
-            print(f"Already connected: {self._connected}")
+        if self.connected:
+            print(f"Already connected: {self.connected}")
             return
-        self._connected = True
+        self.connected = True
         if not self.found_server:
             print("HIVEMQ checking connections")
             self.check_connections()
@@ -401,9 +413,9 @@ class HIVEMQConnection(BaseConnectionClass):
         print(args)
         super(HIVEMQConnection, self)._on_disconnect(*args)
 
-    def _on_subscribe(self, **kwargs):
-        print("HIVEMQ Subscribe")
-        super()._on_subscribe(**kwargs)
+    def _on_subscribe(self, *args):
+        print("HIVEMQ Subscribe", args)
+        super()._on_subscribe(*args)
 
     def _on_unsubscribe(self, client, userdata, flag, rc):
         print("HIVEMQ Unsubscribe")
