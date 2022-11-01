@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 
 MQTT_LOCALHOST = "localhost"
 MQTT_SERVER = "MQTTBroker.local"
-MQTT_PATH_LISTEN = "device_number/+/data"
-MQTT_STATUS_CHANNEL = "device_number/+/status"
+MQTT_PATH_LISTEN = "device/+/data"
+MQTT_STATUS_CHANNEL = "device/+/status"
 # Credentials
 load_dotenv('.env')
 MQTT_USERNAME = os.getenv('HIVEMQTT_USERNAME')
@@ -50,11 +50,10 @@ HIVEMQTT_SERVER = os.getenv('HIVEMQ_URL')
 HIVEMQTT_PORT = 8883
 MQTT_VERSION = mqtt.MQTTv311
 
-DATA_TOPIC = "device_number/+/data"
-CONTROL_TOPIC = "device_number/+/control"
+DATA_TOPIC = "device/+/data"
+CONTROL_TOPIC = "device/+/control"
 
-HIVEMQTT_PATH_LISTEN = "deviceHIVEMQ/+/data"
-HIVEMQTT_STATUS_CHANNEL = "deviceHIVEMQ/+/status"
+CONNECTION_OPTIONS = ["HIVEMQ"]
 
 
 class ConnectionClass:
@@ -72,14 +71,24 @@ class ConnectionClass:
             data (data_class.TimeStreamData):  data class to pass received data to
         """
         # the communications can be different, but it sends the data to the same place
-        self.local_mqtt = LocalMQTTServer(root, data)
-        self.hivemqtt = HIVEMQConnection(root, data)
+        if 'local' in CONNECTION_OPTIONS:
+            self.local_mqtt = LocalMQTTServer(root, data)
+        if "HIVEMQ" in CONNECTION_OPTIONS:
+            self.hivemqtt = HIVEMQConnection(root, data)
 
     def destroy(self):
-        print("destroying local mqtt")
-        self.local_mqtt.destroy()
-        print("destroying HIVE mqtt")
-        self.hivemqtt.destroy()
+        if 'local' in CONNECTION_OPTIONS:
+            print("destroying local mqtt")
+            self.local_mqtt.destroy()
+        if "HIVEMQ" in CONNECTION_OPTIONS:
+            print("destroying HIVE mqtt")
+            self.hivemqtt.destroy()
+
+    def publish(self, topic, msg):
+        if 'local' in CONNECTION_OPTIONS:
+            self.local_mqtt.publish(topic, msg)
+        if "HIVEMQ" in CONNECTION_OPTIONS:
+            self.hivemqtt.publish(topic, msg)
 
 
 class BaseConnectionClass:
@@ -203,7 +212,7 @@ class BaseConnectionClass:
 
         """
         device = POSITIONS[position]
-        _topic = f"device_number/{device}/control"
+        _topic = f"device/{device}/control"
         _message = f'{{"command": "send packet", "packet numbers": {pkt_nums}}}'
         self.publish(_topic, _message, qos=0)
 
@@ -231,7 +240,7 @@ class BaseConnectionClass:
         print(f"publishing: {message}: to topic: {topic}")
         self.client.publish(topic, message, qos=qos)
 
-    def _on_connection(self, client, userdata, flags, rc):
+    def _on_connection(self, client, userdata, flags, rc, properties=None):
         if rc != 0:
             print(f"error on connect flag: {rc}")
             return
@@ -261,7 +270,7 @@ class BaseConnectionClass:
               f"rc: {rc}, flag: {flag}")
 
     def _on_subscribe(self, client, userdata, flag, rc, properties=None):
-        print("Subscribed:", client, userdata, flag, rc)
+        print("Subscribed:", rc)
 
     def _on_unsubscribe(self, client, userdata, flag, rc):
         print("unsubscribed:", client, userdata, flag, rc)
@@ -282,7 +291,7 @@ class BaseConnectionClass:
     def check_connection(self, device):
         if device not in DEVICES:
             device = POSITIONS[device]
-        topic = f"device_number/{device}/control"
+        topic = f"device/{device}/control"
         self.publish(topic, '{"status": "check"}', qos=0)
         # the response will be picked up by the on message
         # method and that will handle the rest of updating
@@ -291,22 +300,22 @@ class BaseConnectionClass:
     def start_device(self, device):
         if device not in DEVICES:
             device = POSITIONS[device]
-        topic = f"device_number/{device}/control"
+        topic = f"device/{device}/control"
         self.publish(topic, '{"command": "start"}', qos=0)
 
     def stop_device(self, device):
         if device not in DEVICES:
             device = POSITIONS[device]
-        topic = f"device_number/{device}/control"
+        topic = f"device/{device}/control"
         self.publish(topic, '{"command": "stop"}', qos=0)
 
     def is_server_found(self):
         return self.found_server
 
     def send_command(self, device, payload):
-        device_topic = f"device_number/{device}/control"
+        device_topic = f"device/{device}/control"
         if device in global_params.POSITIONS:
-            device_topic = f"device_number/{global_params.POSITIONS[device]}/control"
+            device_topic = f"device/{global_params.POSITIONS[device]}/control"
         if type(payload) is dict:
             payload = json.dumps(payload)
         self.publish(device_topic, payload, qos=0)
@@ -390,23 +399,24 @@ class HIVEMQConnection(BaseConnectionClass):
         print("end trying to connect to HIVEMQ Server")
 
     # def _on_connection(self, client, userdata, flags, rc):
-    def _on_connection(self, client, userdata, flags, rc, properties):
+    def _on_connection(self, client, userdata, flags, rc, properties=None):
 
         print("HIVE MQ on connection")
-        if rc != 0:
-            print(f"HIVEMQ error on connect flag: {rc}")
-            return
-        print(f"MQTT connected with client {client}, data: {userdata}, flags:{flags}, rc: {rc}")
-        if self.connected:
-            print(f"Already connected: {self.connected}")
-            return
-        self.connected = True
-        if not self.found_server:
-            print("HIVEMQ checking connections")
-            self.check_connections()
-        self.found_server = True
-        client.subscribe(HIVEMQTT_PATH_LISTEN, qos=2)
-        client.subscribe(HIVEMQTT_STATUS_CHANNEL, qos=0)
+        super()._on_connection(client, userdata, flags, rc, properties)
+        # if rc != 0:
+        #     print(f"HIVEMQ error on connect flag: {rc}")
+        #     return
+        # print(f"MQTT connected with client {client}, data: {userdata}, flags:{flags}, rc: {rc}")
+        # if self.connected:
+        #     print(f"Already connected: {self.connected}")
+        #     return
+        # self.connected = True
+        # if not self.found_server:
+        #     print("HIVEMQ checking connections")
+        #     self.check_connections()
+        # self.found_server = True
+        # client.subscribe(HIVEMQTT_PATH_LISTEN, qos=2)
+        # client.subscribe(HIVEMQTT_STATUS_CHANNEL, qos=0)
 
     def _on_disconnect(self, *args):
         print("HIVEMQ Disconnect")
@@ -417,15 +427,15 @@ class HIVEMQConnection(BaseConnectionClass):
         print("HIVEMQ Subscribe", args)
         super()._on_subscribe(*args)
 
-    def _on_unsubscribe(self, client, userdata, flag, rc):
-        print("HIVEMQ Unsubscribe")
-        client.subscribe(HIVEMQTT_PATH_LISTEN, qos=2)
-        client.subscribe(HIVEMQTT_STATUS_CHANNEL, qos=0)
+    # def _on_unsubscribe(self, client, userdata, flag, rc):
+    #     print("HIVEMQ Unsubscribe")
+    #     client.subscribe(HIVEMQTT_PATH_LISTEN, qos=2)
+    #     client.subscribe(HIVEMQTT_STATUS_CHANNEL, qos=0)
 
 
 if __name__ == "__main__":
     mqtt = LocalMQTTServer(None, 1)
     while True:
-        mqtt.publish("device_number/device_1/data",
+        mqtt.publish("device/device_1/data",
                      '{"command": "start"}')
         time.sleep(3)

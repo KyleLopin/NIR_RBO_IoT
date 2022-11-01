@@ -35,7 +35,6 @@ logging.basicConfig(filename=f'log/{today}.log',
                     format="%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
                     datefmt='%m/%d/%Y %I:%M:%S %p',
                     filemode='a+',
-                    encoding='utf-8',
                     level=logging.INFO)
 
 
@@ -89,8 +88,7 @@ class RBOGUI(tk.Tk):
         self.loop = None
         if not self.connection:
             pass
-
-    #         self.maintain_mqtt_connact()
+        # self.maintain_mqtt_connact()
 
     # self.time_scale_frame = graph.TimeScale(self, self.graph)
     # self.time_scale_frame.pack(side=tk.RIGHT)
