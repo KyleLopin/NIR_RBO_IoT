@@ -34,12 +34,12 @@ def on_disconnect(client, userdata, rc):
     print(f'Disconnect received with rc {rc}')
 
 
-def on_subscribed(client, userdata, flag, rc, properties=None):
-    print(f"subscribed with rc: {rc}")
+def on_subscribed(client, userdata, flag, granted_qos, properties=None):
+    print(f"subscribed with rc: {granted_qos}")
 
 
 def on_message(client, userdata, msg):
-    print(f"got message: {msg}")
+    print(f"got message: {msg.payload}")
 
 
 print(HIVEMQTT_SERVER)
@@ -58,5 +58,5 @@ print(f"result: {result}")
 client.loop_start()
 while True:
     print("loop")
-    client.publish("device/mock/status", "testing")
+    # client.publish("device/mock/status", "testing")
     time.sleep(5)

@@ -323,6 +323,7 @@ class BaseConnectionClass:
 
     def _on_subscribe(self, client, userdata, flag, rc, properties=None):
         print("Subscribed:", rc)
+
     def _on_subscribe(self, client, userdata, message_id, qos, properties=None):
         """
         When subscribing print out the information about the subscription
