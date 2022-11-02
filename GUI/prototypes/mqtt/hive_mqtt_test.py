@@ -58,5 +58,5 @@ print(f"result: {result}")
 client.loop_start()
 while True:
     print("loop")
-    client.publish("device/mock/data", "testing")
+    client.publish("device/mock/status", "testing")
     time.sleep(5)

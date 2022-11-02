@@ -156,17 +156,19 @@ class BaseConnectionClass:
 
         # devices, i.e. "device_2" are send in the topic, convert that
         # to position, i.e. "position 2" for the rest of this program
-        if "hub" not in device:
+        if device in global_params.DEVICES:
             position = global_params.DEVICES[device]
             # update the user information frame the sensor is working
             self.master.info.check_in(position)
+        else:  # the topic is not correct for a device
+            return
         if 'data' in msg.topic:
 
             data_str = msg.payload.decode('utf8')
             # json_loaded = json.load(data_str)
             # json_data = json.dump(json_loaded, sort_keys=True)
             self.parse_mqtt_data(ast.literal_eval(data_str))
-        elif 'hub' in msg.topic:
+        elif 'hub' in msg.topic:  #TODO: depericate this part
             # mqtt hub is still connected
             self.master.mqtt_broker_checkin = 0
         elif 'status' in msg.topic:
@@ -264,7 +266,7 @@ class BaseConnectionClass:
         print(f"publishing: {message}: to topic: {topic}")
         self.client.publish(topic, message, qos=qos)
 
-    def _on_connection(self, client, userdata, flags, result):
+    def _on_connection(self, client, userdata, flags, result, properties=None):
         """
         Callback for when a connection is made.  Check for errors in connecting,
         if connection is good and there is already not a connection made, then
@@ -321,7 +323,7 @@ class BaseConnectionClass:
 
     def _on_subscribe(self, client, userdata, flag, rc, properties=None):
         print("Subscribed:", rc)
-    def _on_subscribe(self, client, userdata, message_id, qos):
+    def _on_subscribe(self, client, userdata, message_id, qos, properties=None):
         """
         When subscribing print out the information about the subscription
 
