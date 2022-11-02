@@ -1,10 +1,10 @@
 # Copyright (c) 2022 Kyle Lopin (Naresuan University) <kylel@nu.ac.th>
 
 """
-
+Connection classes to connect to MQTT servers.
 """
 
-__author__ = "Kyle Vitatus Lopin"
+__author__ = "Kyle Vitautus Lopin"
 
 # standard files
 import ast
@@ -96,6 +96,8 @@ class BaseConnectionClass:
     This class will handle base mqtt communications.  It needs a child class to
     implement the details of the specific mqtt, i.e. password and username,
     server address
+    TODO: see if self.client can be removed
+    TODO: see if self.data can be bound to client and removed
     """
     def __init__(self, master: tk.Tk,
                  client_name, data=None,
@@ -132,16 +134,31 @@ class BaseConnectionClass:
         self.client.loop(timeout=10)
 
     def stop_conn(self):
+        """
+        Stop the loop maintaining the MQTT connection and a Paho loop if it is
+        running.  Finally, disconnect the connection.
+        """
         self.master.after_cancel(self.loop)
         self.client.loop_stop()
+        self.client.disconnect()
 
-    def _on_message(self, cleint, userdata, msg):
+    def _on_message(self, client, userdata, msg):
+        """
+        Handle all incoming message from the broker
+        Args:
+            client:  paho MQTT Client
+            userdata: data associated with the MQTT channel, None now
+            msg (dict): JSON package directed from the MQTT broker, usually from
+            a sensor
+        """
         print("Got message:", msg.topic, msg.payload)
         device = msg.topic.split("/")[1]
 
-        # print(f"message from device_number: {device_number}")
+        # devices, i.e. "device_2" are send in the topic, convert that
+        # to position, i.e. "position 2" for the rest of this program
         if "hub" not in device:
             position = global_params.DEVICES[device]
+            # update the user information frame the sensor is working
             self.master.info.check_in(position)
         if 'data' in msg.topic:
 
@@ -152,12 +169,10 @@ class BaseConnectionClass:
         elif 'hub' in msg.topic:
             # mqtt hub is still connected
             self.master.mqtt_broker_checkin = 0
-
         elif 'status' in msg.topic:
             # JSON converts False to false and True to true, fix that here
             payload = msg.payload.decode('utf8').replace("false", "False")
             payload = payload.replace("true", "True")
-
             # print(f"Got control message: {msg.payload}")
             msg_dict = ast.literal_eval(payload)
             # print(f"msg dict: {msg_dict}")
@@ -180,9 +195,6 @@ class BaseConnectionClass:
 
         Args:
             packet (dict): JSON mqtt data packet
-
-        Returns: None
-
         """
         position = packet["status"]
         if position in POSITIONS:
@@ -217,19 +229,23 @@ class BaseConnectionClass:
         self.publish(_topic, _message, qos=0)
 
     def parse_mqtt_data(self, packet):
-        if "Raw_data" in packet:
+        """
+        Deal with incoming data packet(s), either a current read, or older
+        saved packets that coming in a large packet
+        Args:
+            packet (dict): data packet(s) from sensor
+        """
+        if "Raw_data" in packet:  # single read that just occurred
             # update the data
             print(f"parse mqtt data keys: {packet.keys()}")
-            # self.master.graph.process_raw_data(packet)
             self.data.add_data(packet)
             # the data class will update the display
-        elif "data packets" in packet:
-            # this is saved data packets
+        elif "data packets" in packet: # this is saved data packets
+            # the packet will be in the form of "packet id number": "data", i.e.
+            # "198": "25, 234, 299, ...."
             for key in packet:
                 print(f"data key: {key}")
-                # print(f"data value: {packet[key]}")
                 if "data packets" not in key:
-                    # print("adding data")
                     try:
                         self.data.add_data(packet[key])
                     except Exception as _error:
@@ -237,16 +253,42 @@ class BaseConnectionClass:
                         logging.error(f"Error: {_error}\nprocessing packet {packet}")
 
     def publish(self, topic, message, qos=0):
+        """
+        Publish message to the topic on the MQTT broker
+
+        Args:
+            topic (str): topic to publish to
+            message (str): message to send
+            qos (int): quality of service to send the message with
+        """
         print(f"publishing: {message}: to topic: {topic}")
         self.client.publish(topic, message, qos=qos)
 
-    def _on_connection(self, client, userdata, flags, rc, properties=None):
-        if rc != 0:
-            print(f"error on connect flag: {rc}")
+    def _on_connection(self, client, userdata, flags, result):
+        """
+        Callback for when a connection is made.  Check for errors in connecting,
+        if connection is good and there is already not a connection made, then
+        sent the connected message_id to True, and the disconnect callback can
+        toggle it back if disconnected.  Also check the found_server message_id,
+        if this is the first time a server has been seen, then check for
+        any missing data.  TODO: move this out of HIVEMQ till tested better.
+
+        Args:
+            client: paho client that is being used,
+                    could be a client for mosquitto or HIVEMQ
+            userdata (None): data bound to paho client, None for now
+            flags (dict): response flags from the broker
+            result (int):  connection results, 0 is successful.
+                           See paho docs for all options
+
+        """
+        if result != 0:
+            print(f"error on connect message_id: {result}")
             return
-        print(f"MQTT connected with client {client}, data: {userdata}, flags:{flags}, rc: {rc}")
-#         print(f"self connected value: {self._connected}")
-        print(f"connection time: {datetime.now().strftime('%H:%M:%S')}")
+        print(f"MQTT connected with client {client}, data: {userdata}, "
+              f"flags:{flags}, qos: {result}")
+        # test if already connected.
+        # This happened once so the was put in to fix it? I think
         if self.connected:
             print(f"Already connected: {self.connected}")
             return
@@ -256,24 +298,52 @@ class BaseConnectionClass:
         if not self.found_server:
             print("found server ask pakcet")
             self.check_connections()
-            # self.update_models()
-
         self.found_server = True
         client.subscribe(MQTT_PATH_LISTEN, qos=1)
         client.subscribe(MQTT_STATUS_CHANNEL, qos=0)
-        print("On_connection")
 #         self.client.loop_start()
 
     def _on_disconnect(self, client, userdata, rc, flag):
+        """
+        Disconnect handler, set _connect to false so the connection loop will
+        try to reconnect.  Also print out the details of the disconnection
+
+        Args:
+            client: which client was disconnected
+            userdata: data bound to the paho mqtt client, currently is None
+            rc: disconnection state, 0 is success
+            flag: not sure, doc say this is not here, but there is
+            an error without it
+        """
         self.connected = False
         print(f"Disconnected client: {client}, data: {userdata}, "
               f"rc: {rc}, flag: {flag}")
 
     def _on_subscribe(self, client, userdata, flag, rc, properties=None):
         print("Subscribed:", rc)
+    def _on_subscribe(self, client, userdata, message_id, qos):
+        """
+        When subscribing print out the information about the subscription
 
-    def _on_unsubscribe(self, client, userdata, flag, rc):
-        print("unsubscribed:", client, userdata, flag, rc)
+        Args:
+            client: which client was subscribed
+            userdata: data bound to the paho mqtt client, currently is None
+            message_id (str?): message returned from the subscribe call
+            qos: quality of service granted by the broker granted
+        """
+        print("Subscribed:", client, userdata, message_id, qos)
+
+    def _on_unsubscribe(self, client, userdata, message_id, result):
+        """
+        When unsubscribed from a topic, print out a message and re-subscribe
+        TODO: test if the arguments are right
+        Args:
+            client: which client was unsubscribed
+            userdata: data bound to the paho mqtt client, currently is None
+            message_id (str): message returned from the unsubscribe call
+            result: good question, is the really an arg or not
+        """
+        print("unsubscribed:", client, userdata, message_id, result)
         client.subscribe(MQTT_PATH_LISTEN, qos=0)
         client.subscribe(MQTT_STATUS_CHANNEL, qos=0)
 
@@ -281,7 +351,7 @@ class BaseConnectionClass:
         print("reconnecting")
 
     def check_connections(self):
-        """ Publish a message that the sensor
+        """ Publish a message to all the sensors
         will respond to check if the sensor is on """
         print("checking connections")
         for device in DEVICES:
@@ -289,6 +359,16 @@ class BaseConnectionClass:
             self.check_connection(device)
 
     def check_connection(self, device):
+        """
+        Check if the device sent is connected by sending a status check method
+        through the mqtt channel.  The response will be picked up by the
+        on_message method and that will handle the rest of updating
+        the connection status label.
+
+        Args:
+            device (str): the device name, "device_2" or position, "position 2"
+        """
+        # use to be "device_2", but some send "position 2" still
         if device not in DEVICES:
             device = POSITIONS[device]
         topic = f"device/{device}/control"
@@ -298,12 +378,25 @@ class BaseConnectionClass:
         # the connection status label
 
     def start_device(self, device):
+        """
+        Send a command to start the device
+        Args:
+            device (str): the device name, "device_2" or position, "position 2"
+        """
+        # if "position 2" sent, convert it to "device_2" for mqtt channel
         if device not in DEVICES:
             device = POSITIONS[device]
         topic = f"device/{device}/control"
         self.publish(topic, '{"command": "start"}', qos=0)
 
     def stop_device(self, device):
+        """
+        Send a command to stop the device
+
+        Args:
+            device (str): the device name, "device_2" or position, "position 2"
+        """
+        # if "position 2" sent, convert it to "device_2" for mqtt channel
         if device not in DEVICES:
             device = POSITIONS[device]
         topic = f"device/{device}/control"
@@ -313,6 +406,16 @@ class BaseConnectionClass:
         return self.found_server
 
     def send_command(self, device, payload):
+        device_topic = f"device/{device}/control"
+        """
+        Publish to the control channel of a sensor (device), can accept
+        a string or dictionary for the payload and it will be converted to
+        a string to send
+
+        Args:
+            device (str): device, i.e. "device_2" to publish to
+            payload (dict or str): data or message to send to the sensor
+        """
         device_topic = f"device/{device}/control"
         if device in global_params.POSITIONS:
             device_topic = f"device/{global_params.POSITIONS[device]}/control"
@@ -351,6 +454,10 @@ class BaseConnectionClass:
 
 
 class LocalMQTTServer(BaseConnectionClass):
+    """
+    Impliment a BaseConnectionClass for a mosquitto MQTT broker running on
+    the local WLAN
+    """
     def __init__(self, master: tk.Tk, data=None):
         print(f"connecting with name: {MQTT_NAME}")
         # BaseConnectionClass.__init__(self, master,
@@ -426,11 +533,6 @@ class HIVEMQConnection(BaseConnectionClass):
     def _on_subscribe(self, *args):
         print("HIVEMQ Subscribe", args)
         super()._on_subscribe(*args)
-
-    # def _on_unsubscribe(self, client, userdata, flag, rc):
-    #     print("HIVEMQ Unsubscribe")
-    #     client.subscribe(HIVEMQTT_PATH_LISTEN, qos=2)
-    #     client.subscribe(HIVEMQTT_STATUS_CHANNEL, qos=0)
 
 
 if __name__ == "__main__":

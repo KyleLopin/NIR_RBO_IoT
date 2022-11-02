@@ -44,8 +44,8 @@ def on_connection_resumed(connection, return_code, session_present, **kwargs):
         print("Session did not persist. Resubscribing to existing topics...")
         resubscribe_future, _ = connection.resubscribe_existing_topics()
 
-        # Cannot synchronously wait for resubscribe result because we're on the connection's event-loop thread,
-        # evaluate result with a callback instead.
+        # Cannot synchronously wait for resubscribe qos because we're on the connection's event-loop thread,
+        # evaluate qos with a callback instead.
         resubscribe_future.add_done_callback(on_resubscribe_complete)
 
 
@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
     connect_future = mqtt_connection.connect()
 
-    # Future.result() waits until a result is available
+    # Future.qos() waits until a qos is available
     connect_future.result()
     print("Connected!")
 

@@ -231,5 +231,5 @@ if __name__ == "__main__":
     # # print(array.shape)
     #
     # print(len(array))
-    # result = ml_models.fit(array, "AV")
-    # print(result)
+    # qos = ml_models.fit(array, "AV")
+    # print(qos)

@@ -18,8 +18,8 @@ import data_class
 import mock_conn
 
 
-# HIVEMQTT_SERVER = "localhost"
-# HIVEMQTT_SERVER = "192.168.1.52"
+# HIVE_MQTT_SERVER = "localhost"
+# HIVE_MQTT_SERVER = "192.168.1.52"
 MQTT_SERVER = "MQTTBroker.local"
 MQTT_PATH_LISTEN = "device_number/+/data"
 MQTT_USERNAME = "GUI MASTER"

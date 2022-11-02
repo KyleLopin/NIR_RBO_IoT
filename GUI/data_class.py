@@ -345,7 +345,7 @@ class TimeStreamData:
         self.positions = {}
         # this is needed to make the datetime in the data
         self.today = datetime.today().strftime("%Y-%m-%d")
-        # flag to prevent repeately asking for the same data
+        # message_id to prevent repeately asking for the same data
         self.already_asked_for_data = False
         # make these in make_save_files() has to make these on new days also
         self.save_file = None
@@ -576,9 +576,9 @@ class TimeStreamData:
         print(f"going to ask for packets: {self.already_asked_for_data}")
         if missing_pkt and not self.already_asked_for_data:
             print(f"ask for packet: {missing_pkt}")
-            self.already_asked_for_data = True  # set flag to not repeat ask
+            self.already_asked_for_data = True  # set message_id to not repeat ask
             print(f"already asked for data: {self.already_asked_for_data}")
-            self.root_app.after(5*60000, self.clear_ask_for_data_flag)  # wait 10 mins and clear the flag
+            self.root_app.after(5*60000, self.clear_ask_for_data_flag)  # wait 10 mins and clear the message_id
             self.connection.ask_for_stored_data(device, missing_pkt)
 
     def clear_ask_for_data_flag(self):

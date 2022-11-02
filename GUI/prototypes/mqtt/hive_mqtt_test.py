@@ -8,6 +8,7 @@ __author__ = "Kyle Vitatus Lopin"
 
 # standard libraries
 import os
+import time
 
 # installed libraries
 from dotenv import load_dotenv
@@ -54,4 +55,8 @@ client.username_pw_set(username=HIVEMQTT_USERNAME,
 # client.connect('broker.mqttdashboard.com', 1883)
 result = client.connect(HIVEMQTT_SERVER, HIVEMQTT_PORT)
 print(f"result: {result}")
-client.loop_forever()
+client.loop_start()
+while True:
+    print("loop")
+    client.publish("device/mock/data", "testing")
+    time.sleep(5)
