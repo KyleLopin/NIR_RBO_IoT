@@ -15,7 +15,7 @@ import sys
 import unittest
 from unittest import mock
 # fix the imports of the GUI files
-sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
+sys.path.append(os.path.join('..', 'GUI'))
 # local files
 # import GUI
 # from GUI import data_class
