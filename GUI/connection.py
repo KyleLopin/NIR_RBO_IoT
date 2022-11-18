@@ -76,6 +76,23 @@ class ConnectionClass:
         if "HIVEMQ" in CONNECTION_OPTIONS:
             self.hivemqtt = HIVEMQConnection(root, data)
 
+    def ask_for_stored_data(self, position, pkt_nums):
+        """
+        Ask a sensor to send old data that it has saved.
+
+        Args:
+            position (str): position name, ie "position 2"
+            pkt_nums (list): list of packet numbers to send
+
+        Returns: None, the sensor will respond and the on_message
+        callback will handle the rest
+
+        """
+        device = POSITIONS[position]
+        _topic = f"device/{device}/control"
+        _message = f'{{"command": "send packet", "packet numbers": {pkt_nums}}}'
+        self.publish(_topic, _message, msg_qos=0)
+
     def destroy(self):
         if 'local' in CONNECTION_OPTIONS:
             print("destroying local mqtt")
@@ -84,11 +101,11 @@ class ConnectionClass:
             print("destroying HIVE mqtt")
             self.hivemqtt.destroy()
 
-    def publish(self, topic, msg):
+    def publish(self, topic, msg, msg_qos=0):
         if 'local' in CONNECTION_OPTIONS:
-            self.local_mqtt.publish(topic, msg)
+            self.local_mqtt.publish(topic, msg, msg_qos)
         if "HIVEMQ" in CONNECTION_OPTIONS:
-            self.hivemqtt.publish(topic, msg)
+            self.hivemqtt.publish(topic, msg, msg_qos)
 
 
 class BaseConnectionClass:
@@ -212,23 +229,6 @@ class BaseConnectionClass:
                 if not model_correct:
                     print("Error checking model, please reload")
                     # TODO: reload the model
-
-    def ask_for_stored_data(self, position, pkt_nums):
-        """
-        Ask a sensor to send old data that it has saved.
-
-        Args:
-            position (str): position name, ie "position 2"
-            pkt_nums (list): list of packet numbers to send
-
-        Returns: None, the sensor will respond and the on_message
-        callback will handle the rest
-
-        """
-        device = POSITIONS[position]
-        _topic = f"device/{device}/control"
-        _message = f'{{"command": "send packet", "packet numbers": {pkt_nums}}}'
-        self.publish(_topic, _message, qos=0)
 
     def parse_mqtt_data(self, packet):
         """

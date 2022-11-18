@@ -33,17 +33,19 @@ class Models:
         # print(json_data)
         self.models = dict()
         for device in devices:
-            # print(f"device_number: {device_number}")
+            print(f"making model for device: {device}")
             # print(json_data[device_number])
             # for key in json_data[device_number].keys():
             #     print(f"{key}, {len(json_data[device_number][key])}")
             #     print(f"{json_data[device_number][key]}")
+            self.models[device] = Model(json_data[device])
             if device in self.models:
                 self.models[device] = Model(json_data[device])
             else:
                 print(f"Skipping device: {device}, there is not model")
 
     def fit(self, raw_data, device):
+        print(f"models keys: {self.models.keys()}")
         return self.models[device].fit(raw_data)
 
 
