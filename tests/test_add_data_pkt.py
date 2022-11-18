@@ -38,12 +38,19 @@ class TestAddDataPacket(unittest.TestCase):
         #TODO: clear any saved data loaded from a file when starting the class
         # data_dict = ast.literal_eval(DATA_PKT1)
         data_dict = json.loads(DATA_PKT1)
-        print(f"data dict: {data_dict}")
         returned_value = time_stream_data.add_data(data_dict)
-        print(f"returned value: {returned_value}")
-        print(f"time_stream_data: {time_stream_data}")
-        device_data = time_stream_data.positions["position 2"]  # type: GUI.data_class.DeviceData
+        device_data = \
+            time_stream_data.positions["position 2"]  # type: GUI.data_class.DeviceData
+
+        self.assertEqual(returned_value, 0,
+                         msg="add_data is not returning a zero but an error code")
+        self.assertListEqual(device_data.time_series,
+                             [datetime.datetime(2022, 11, 18, 9, 55, 22)],
+                             msg="add_data is not saving a single time_series "
+                                 "correctly")
+        self.assertListEqual(device_data.oryzanol, [-20139.0],
+                             msg="add_data is not saving a single oryzanol correctly")
+        # add second packet
+        returned_value2 = time_stream_data.add_data(json.loads(DATA_PKT2))
         print(device_data.time_series)
         print(device_data.oryzanol)
-        self.assertListEqual(device_data.time_series, [datetime.datetime(2022, 11, 18, 9, 55, 22)])
-        self.assertListEqual(device_data.oryzanol, [-20139.0])
