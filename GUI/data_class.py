@@ -475,6 +475,7 @@ class TimeStreamData:
         if not data_pkt:
             return
         print(f"ask 2: {self.already_asked_for_data}")
+        print(f"ask 2b: {device_data.ask_for_missing_packets}")
         if data_pkt and device_data.ask_for_missing_packets and \
                 not self.already_asked_for_data:  # this is not data loaded from file
             # or the sensor is not currently sending saved data
@@ -482,9 +483,9 @@ class TimeStreamData:
             self.root_app.after(5*60000, self.clear_ask_for_data_flag)
             missing_pkt = self.find_next_missing_pkts(device_data, int(data_pkt["packet_id"]))
             print(f"ask for packet2: {missing_pkt} from position: {position}")
-            
-            self.connection.ask_for_stored_data(position, missing_pkt)
-            device_data.ask_for_missing_packets = False
+            if self.connection:  # for testing or offline
+                self.connection.ask_for_stored_data(position, missing_pkt)
+                device_data.ask_for_missing_packets = False
 
         if "Raw_data" in data_pkt and save_data:
             self.master_graph.update_spectrum(data_pkt["Raw_data"], position)

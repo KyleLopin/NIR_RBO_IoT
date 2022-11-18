@@ -184,7 +184,8 @@ class BaseConnectionClass:
             data_str = msg.payload.decode('utf8')
             # json_loaded = json.load(data_str)
             # json_data = json.dump(json_loaded, sort_keys=True)
-            self.parse_mqtt_data(ast.literal_eval(data_str))
+            # self.parse_mqtt_data(ast.literal_eval(data_str))
+            self.parse_mqtt_data(json.loads(data_str))
         elif 'hub' in msg.topic:  #TODO: depericate this part
             # mqtt hub is still connected
             self.master.mqtt_broker_checkin = 0
@@ -237,12 +238,7 @@ class BaseConnectionClass:
         Args:
             packet (dict): data packet(s) from sensor
         """
-        if "Raw_data" in packet:  # single read that just occurred
-            # update the data
-            print(f"parse mqtt data keys: {packet.keys()}")
-            self.data.add_data(packet)
-            # the data class will update the display
-        elif "data packets" in packet: # this is saved data packets
+        if "data packets" in packet: # this is saved data packets
             # the packet will be in the form of "packet id number": "data", i.e.
             # "198": "25, 234, 299, ...."
             for key in packet:
@@ -253,6 +249,11 @@ class BaseConnectionClass:
                     except Exception as _error:
                         print(f"error processing packet: {packet}")
                         logging.error(f"Error: {_error}\nprocessing packet {packet}")
+        else:
+            # update the data
+            print(f"parse mqtt data keys: {packet.keys()}")
+            self.data.add_data(packet)
+            # the data class will update the display
 
     def publish(self, topic, message, qos=0):
         """

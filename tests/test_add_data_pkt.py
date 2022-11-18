@@ -7,6 +7,8 @@
 __author__ = "Kyle Vitautus Lopin"
 
 # standard libraries
+import datetime
+import json
 import os
 import sys
 import unittest
@@ -31,4 +33,17 @@ class TestAddDataPacket(unittest.TestCase):
     def test_add_data_pkt(self):
         with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
                         return_value=True) as mocked_gui:
-            dc = data_class.TimeStreamData(mocked_gui)
+            time_stream_data = data_class.TimeStreamData(mocked_gui)
+        print(f"test: {time_stream_data}")
+        #TODO: clear any saved data loaded from a file when starting the class
+        # data_dict = ast.literal_eval(DATA_PKT1)
+        data_dict = json.loads(DATA_PKT1)
+        print(f"data dict: {data_dict}")
+        returned_value = time_stream_data.add_data(data_dict)
+        print(f"returned value: {returned_value}")
+        print(f"time_stream_data: {time_stream_data}")
+        device_data = time_stream_data.positions["position 2"]  # type: GUI.data_class.DeviceData
+        print(device_data.time_series)
+        print(device_data.oryzanol)
+        self.assertListEqual(device_data.time_series, [datetime.datetime(2022, 11, 18, 9, 55, 22)])
+        self.assertListEqual(device_data.oryzanol, [-20139.0])
