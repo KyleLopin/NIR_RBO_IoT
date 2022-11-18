@@ -8,6 +8,7 @@ GUI/__pycache__/
 GUI/certs
 *.py[cod]
 *$py.class
+.idea
 
 # C extensions
 *.so

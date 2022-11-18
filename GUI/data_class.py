@@ -440,7 +440,10 @@ class TimeStreamData:
         data_pkt = helper_functions.check_database_info(data_pkt)
         # refactoring the project to remove all 'device_number's
         if "device_number" in data_pkt:
+            print("FIX THIS ERROR ON THE SENSOR SIDE")
             position = data_pkt["device_number"].strip()
+        if "device" in data_pkt:
+            position = data_pkt["device"].strip()
         elif "position" in data_pkt:
             position = data_pkt["position"].strip()
         else:
