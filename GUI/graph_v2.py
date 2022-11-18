@@ -41,7 +41,9 @@ COLORS = {"position 1": "orangered",
           "Sensor position 3": "dodgerblue",
           "AV": "slategray"}
 
-json_data2 = open(os.path.join(__location__, "master_settings.json")).read()
+with open(os.path.join(__location__, "master_settings.json")) as _file:
+    json_data2 = _file.read()
+# json_data2 = open(os.path.join(__location__, "master_settings.json")).read()
 SETTINGS = json.loads(json_data2)
 ORY_GRAPH_SIZE = (7, 3)
 SPECTRUM_FRAME = (2.5, 2)

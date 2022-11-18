@@ -7,7 +7,12 @@ Some helper functions, usually simple functions that need comprehensive error ch
 __author__ = "Kyle Vitatus Lopin"
 
 import datetime
+import json
 import logging
+import os
+
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
 logger = logging.getLogger(__name__)
 
 
@@ -29,3 +34,23 @@ def check_database_info(data_pkt):
         data_pkt["time"] = time
         return data_pkt  # return new formatted data packet
     return data_pkt  # no change
+
+
+def make_model_json(device):
+    """
+    Make the model.json file for a device, ie "device_1" to
+    put in the sensor program from the
+    :param device: string, "device_1", "device_2" etc to get
+    :return:
+    """
+    with open(os.path.join(__location__, "new_models.json"), "r") as _file:
+        data = json.load(_file)
+    print(data)
+    device_data = data[device]
+    print(device_data)
+    with open(os.path.join(__location__, "models.json"), "w") as _file:
+        json.dump(device_data, _file)
+
+
+if __name__ == "__main__":
+    make_model_json("device_1")

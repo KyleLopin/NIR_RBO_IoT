@@ -39,7 +39,8 @@ logging.basicConfig(filename=f'log/{today}.log',
 
 
 def get_settings(key):
-    json_data = open(os.path.join(__location__, "master_settings.json")).read()
+    with open(os.path.join(__location__, "master_settings.json")) as _file:
+        json_data = _file.read()
     json_settings = json.loads(json_data)
     return json_settings[key]
 

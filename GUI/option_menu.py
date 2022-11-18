@@ -23,7 +23,8 @@ NUMBER_WAVELENGTHS = 301
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
-json_data = open(os.path.join(__location__, "new_models.json")).read()
+with open(os.path.join(__location__, "new_models.json")) as _file:
+    json_data = _file.read()
 MODEL_INFO = json.loads(json_data)
 DEVICES = global_params.DEVICES
 POSITIONS = global_params.POSITIONS

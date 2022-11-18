@@ -6,7 +6,15 @@
 
 __author__ = "Kyle Vitautus Lopin"
 
+# standard libraries
+import os
+import sys
 import unittest
+from unittest import mock
+
+sys.path.append(os.path.join('..', 'GUI'))
+# local files
+import data_class
 
 DATA_PKT1 = b'{"time": "09:55:22", "date": "2022-11-18", "packet_id": 1, ' \
             b'"device": "position 2", "mode": "live", "OryConc": -20139, ' \
@@ -20,4 +28,7 @@ DATA_PKT3 = b'{"time": "10:06:13", "date": "2022-11-18", "packet_id": 4, ' \
 
 
 class TestAddDataPacket(unittest.TestCase):
-    def
+    def test_add_data_pkt(self):
+        with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
+                        return_value=True) as mocked_gui:
+            dc = data_class.TimeStreamData(mocked_gui)
