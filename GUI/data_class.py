@@ -390,9 +390,9 @@ class TimeStreamData:
             csv_reader = csv.reader(csv_file, delimiter=',')
             line_count = 0
             for row in csv_reader:
-                print(f"line count: {line_count}, len row: {len(row)}")
+                # print(f"line count: {line_count}, len row: {len(row)}")
                 if line_count != 0 and len(row)>=7:
-                    print(f"load row: {row}")
+                    # print(f"load row: {row}")
                     self.add_csv_data(row)
                 line_count += 1
 
@@ -432,9 +432,9 @@ class TimeStreamData:
         """ Add data from a csv row, this will be saved data """
         # position = csv_row[indices["position"]].strip()
         data_pkt = convert_csv_row_to_packet(csv_row)
-        print(f"adding data_pkt: {data_pkt}")
+        # print(f"adding data_pkt: {data_pkt}")
         position = data_pkt["position"]
-        print(f"adding csv data for position: {position}")
+        # print(f"adding csv data for position: {position}")
         if position:
 
             if position in POSITIONS and position not in self.positions:
