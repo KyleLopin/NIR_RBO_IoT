@@ -44,6 +44,7 @@ def get_data_file() -> str:
 
 
 @freezegun.freeze_time(TEST_DATE)
+@mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock, return_value=True)
 class TestAddDataPacket(unittest.TestCase):
     saved_filename = os.path.join('..', 'GUI', 'data', f"{TEST_DATE}.csv")
 
@@ -51,9 +52,7 @@ class TestAddDataPacket(unittest.TestCase):
         """ Delete any saved filed for the simulated test data """
         if os.path.exists(self.saved_filename):
             os.remove(self.saved_filename)
-        self.mocked_gui = 1  #TODO: pass the patch here
 
-    @mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock, return_value=True)
     def test_add_data_pkt(self, mocked_gui):
         self.assertEqual(get_data_file(), "No file yet",
                          msg="File is not being deleted between tests correctly")
@@ -73,7 +72,6 @@ class TestAddDataPacket(unittest.TestCase):
         print("end1")
         print(get_data_file())
 
-    @mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock, return_value=True)
     def test_add_2_pkts(self, mocked_gui):
         """
         Test that adding 2 packets creates the correct device data
@@ -106,8 +104,6 @@ class TestAddDataPacket(unittest.TestCase):
                          msg="add_data is not returning a zero but an error code"
                              "for the second packet")
 
-
-    @mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock, return_value=True)
     def test_make_save_file(self, mocked_gui):
         # TODO: move this to other unittest file
         data_class.TimeStreamData(mocked_gui)
