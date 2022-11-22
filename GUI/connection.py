@@ -53,7 +53,7 @@ MQTT_VERSION = mqtt.MQTTv311
 DATA_TOPIC = "device/+/data"
 CONTROL_TOPIC = "device/+/control"
 
-CONNECTION_OPTIONS = ["HIVEMQ"]
+CONNECTION_OPTIONS = ["HIVEMQ", "local"]
 
 
 class ConnectionClass:

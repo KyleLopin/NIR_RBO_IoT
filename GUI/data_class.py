@@ -337,6 +337,7 @@ class DeviceData:
 class TimeStreamData:
     def __init__(self, root_app):
         # print("Init Time Stream Data")
+        print(f"FILE HEADER: {FILE_HEADER}")
         self.master_graph = root_app.graphs
         self.connection = None
         devices = DEVICES[:]  # copy to append to it
@@ -360,7 +361,7 @@ class TimeStreamData:
         today = dt.datetime.today().strftime("%Y-%m-%d")
         data_path = os.path.join(__location__, "data")
         self.save_file = os.path.join(data_path, f"{today}.csv")
-        print("save file", self.save_file)
+        # print("save file", self.save_file)
         self.save_raw_data_file = os.path.join(data_path, f"{today}_raw_data.csv")
         try:  # the factory computer wants a different directory
             if os.path.isdir(FACTORY_DIR):
@@ -378,7 +379,7 @@ class TimeStreamData:
             # print('device data 2:', self.positions["position 2"].oryzanol)
             self.save_summary_data()
         else:  # no file so make a new one
-            print("making new data file")
+            # print("making new data file")
             self.make_file(self.save_file, FILE_HEADER)
         if LOG_RAW_DATA and not os.path.isfile(self.save_raw_data_file):
             self.make_file(self.save_raw_data_file, RAW_DATA_HEADERS)
@@ -448,10 +449,6 @@ class TimeStreamData:
             return 204  # TODO: sometimes an int gets in here.  look at sensor code to fix
         # if data is from a database, it has to be converted first
         data_pkt = helper_functions.check_database_info(data_pkt)
-        # refactoring the project to remove all 'device_number's
-        if "device" in data_pkt:
-            print("FIX THIS ERROR ON THE SENSOR SIDE")
-            position = data_pkt["device"].strip()
         if "device" in data_pkt:
             position = data_pkt["device"].strip()
         elif "position" in data_pkt:
@@ -459,8 +456,6 @@ class TimeStreamData:
         else:
             print("No 'device' or 'position' in data_pkt")
             return 200
-
-        print(f"add device position: {position}")
         if position not in self.positions:
             self.add_device(position)
 
@@ -478,9 +473,7 @@ class TimeStreamData:
                 device_data.update_date(None)  # tell device_data to update
             # elif packet_datetime == device_data.today - timedelta(days=1):
             else:
-                # old data was recieved, just ignore it rather than figure out if its needed
-                print("Ignoring old data")
-                print(f"save file: {self.save_file}")
+                # old data was received, just ignore it rather than figure out if its needed
                 print(f"packet data: {packet_date}, current date: {current_date}")
                 return 201  # testing unit code
         # print(f"Tracking models1: {self.models.keys()}")
@@ -548,7 +541,7 @@ class TimeStreamData:
 
         # print(f"saving packet: {data_pkt}")
         for item in FILE_HEADER_TO_SAVE:
-            print(f"item: {item}")
+            # print(f"item: {item}")
             if item in data_pkt:
                 if type(data_pkt[item]) is float:
                     data_list.append(f"{data_pkt[item]:.1f}")
@@ -556,9 +549,7 @@ class TimeStreamData:
                     data_list.append(f"{data_pkt[item]}")
             else:
                 data_list.append("")
-        print(f"saving data list: {data_list}")
         data_list.append('\n')
-
         # now write a row to the file
         try:
             with open(self.save_file, 'a') as _file:
@@ -659,13 +650,23 @@ class TimeStreamData:
 
     @staticmethod
     def make_file(filepath, header):
+        """
+        NOTE: DO NOT CHANGE header, SOME CONSTANTS GET PASSED IN THERE
+        Args:
+            filepath:
+            header list[str]: DO NOT CHANGE.
+
+        Returns:
+
+        """
         # print(f"making file with header: {header}")
         try:
             with open(filepath, 'x') as _file:
                 # use 'x' to try to make the file, if it exists
                 # it will raise an error and just pass
-                header.append('\n')
+                # print(f"header: {header}")
                 _file.write(', '.join(header))
+                _file.write('\n')
         except Exception as error:
             print(f"Error making file: {filepath}, error: {error}")
 

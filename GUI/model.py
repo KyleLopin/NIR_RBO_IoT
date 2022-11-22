@@ -33,7 +33,7 @@ class Models:
         # print(json_data)
         self.models = dict()
         for device in devices:
-            print(f"making model for device: {device}")
+            # print(f"making model for device: {device}")
             # print(json_data[device_number])
             # for key in json_data[device_number].keys():
             #     print(f"{key}, {len(json_data[device_number][key])}")
@@ -89,7 +89,7 @@ class Model:
         abs_data = -np.log10(refl_data)
         # print(abs_data)
         # print(type(abs_data))
-        # for x in abs_data:
+        # for x in abs_data:f
         #     print(x)
         abs_data = np.array([0 if np.isnan(x) else x for x in abs_data])
         # print('kl', len(abs_data))
