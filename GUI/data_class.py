@@ -14,11 +14,15 @@ import json
 import logging
 import os
 import shutil
+import sys
 import tkinter as tk  # typehinting
 
 # installed libraries
 import numpy as np
 
+# sys.path.append(os.getcwd())
+sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
+print(sys.path)
 # local files
 import global_params
 import helper_functions

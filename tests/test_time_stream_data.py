@@ -9,6 +9,7 @@ __author__ = "Kyle Vitautus Lopin"
 # standard libraries
 import datetime as dt
 import filecmp
+import inspect
 import json
 import os
 import shutil
@@ -20,8 +21,14 @@ from unittest import mock
 import freezegun
 
 sys.path.append(os.path.join('..', 'GUI'))
+# current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+# parent_dir = os.path.dirname(current_dir)
+# sys.path.insert(0, parent_dir)
+# sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
+# print(f'path: {sys.path}')
 # local files
 import GUI.data_class as data_class
+
 TEST_DATE = "2022-11-18"
 SAVED_FILE_PATH = os.path.join('..', 'GUI', 'data', f"{TEST_DATE}.csv")
 
@@ -85,6 +92,8 @@ class TestAddDataPacket(unittest.TestCase):
         Check that the tearDown method is clearing the saved files that are made,
         initialize the data_class.TimeStreamData class and save to self.
         """
+        if get_data_file() != "No file yet":  # make sure not file yet for this testcase
+            self.tearDown()
         self.assertEqual(get_data_file(), "No file yet",
                          msg="File is not being deleted between tests correctly")
         with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
@@ -169,8 +178,6 @@ class TestAddDataPacket(unittest.TestCase):
         returned_value = self.tsd.add_data(json.loads(DATA_PKT_OLD))
         device_data = \
             self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
-        print(f"old returned: {returned_value}")
-        print(f"old dd: {device_data.oryzanol}")
         self.assertListEqual(device_data.oryzanol, [],
                              msg="add_data is not ignoring an old "
                                  "data packet correctly")
