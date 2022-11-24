@@ -40,45 +40,45 @@ def copy_data_test_file():
     return new_data_file
 
 
-class TestDataClass(unittest.TestCase):
-    def test_load_file(self):
-        """ Test if the current date file is loaded
-         correctly in the data_class"""
-        copied_filename = copy_data_test_file()  # copy file to test with proper name
-        with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
-                        return_value=True) as mocked_gui:
-            dc = data_class.TimeStreamData(mocked_gui)
-
-        # test if the function is sorting and saving correctly
-        correct_sorted_file = os.path.join(__location__, "sorted_template.csv")
-        self.assertTrue(
-            filecmp.cmp(copied_filename, correct_sorted_file,
-                        shallow=False),
-            msg="Sorted file is not correct after loading and resaving")
-
-        # make sure the packet ids are stored in the device_number data correctly
-        self.assertListEqual(dc.positions['position 2'].packet_ids,
-                             CORRECT_PACKET_IDS, msg="packet_ids not correct")
-
-        # test that the class calculates the correct missing packet ids to ask for
-        device_data = dc.positions['position 2']
-        missing_pkts = dc.find_next_missing_pkts(device_data, 1090)
-        self.assertListEqual(missing_pkts, MISSING_PACKETS,
-                             msg="Missing packets list wrong")
-
-        # test if add_data will ignore data from a previous date
-        today = datetime.today()
-        yesterday = (today - timedelta(days=1)).date()
-        data_pkt = {"device": "position 2", "date": yesterday.strftime("%Y-%m-%d")}
-        error_code_tomorrow = dc.add_data(data_pkt)
-        self.assertEqual(error_code_tomorrow, 201, msg="Not recognizing that the data is old")
-
-        # test if add_data will update to a new day if received a packet with a new days date
-        device_data.today = yesterday  # change data to yesterday to test
-        data_pkt = {"device": "position 2", "date": today.date().strftime("%Y-%m-%d")}
-        dc.add_data(data_pkt)
-        self.assertEqual(device_data.today, today.date(),
-                         msg="data class does not update to the current date correctly")
+# class TestDataClass(unittest.TestCase):
+#     def test_load_file(self):
+#         """ Test if the current date file is loaded
+#          correctly in the data_class"""
+#         copied_filename = copy_data_test_file()  # copy file to test with proper name
+#         with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
+#                         return_value=True) as mocked_gui:
+#             dc = data_class.TimeStreamData(mocked_gui)
+#
+#         # test if the function is sorting and saving correctly
+#         correct_sorted_file = os.path.join(__location__, "sorted_template.csv")
+#         self.assertTrue(
+#             filecmp.cmp(copied_filename, correct_sorted_file,
+#                         shallow=False),
+#             msg="Sorted file is not correct after loading and resaving")
+#
+#         # make sure the packet ids are stored in the device_number data correctly
+#         self.assertListEqual(dc.positions['position 2'].packet_ids,
+#                              CORRECT_PACKET_IDS, msg="packet_ids not correct")
+#
+#         # test that the class calculates the correct missing packet ids to ask for
+#         device_data = dc.positions['position 2']
+#         missing_pkts = dc.find_next_missing_pkts(device_data, 1090)
+#         self.assertListEqual(missing_pkts, MISSING_PACKETS,
+#                              msg="Missing packets list wrong")
+#
+#         # test if add_data will ignore data from a previous date
+#         today = datetime.today()
+#         yesterday = (today - timedelta(days=1)).date()
+#         data_pkt = {"device": "position 2", "date": yesterday.strftime("%Y-%m-%d")}
+#         error_code_tomorrow = dc.add_data(data_pkt)
+#         self.assertEqual(error_code_tomorrow, 201, msg="Not recognizing that the data is old")
+#
+#         # test if add_data will update to a new day if received a packet with a new days date
+#         device_data.today = yesterday  # change data to yesterday to test
+#         data_pkt = {"device": "position 2", "date": today.date().strftime("%Y-%m-%d")}
+#         dc.add_data(data_pkt)
+#         self.assertEqual(device_data.today, today.date(),
+#                          msg="data class does not update to the current date correctly")
 
 
 if __name__ == "__main__":

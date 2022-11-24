@@ -20,11 +20,23 @@ from unittest import mock
 import freezegun
 
 sys.path.append(os.path.join('..', 'GUI'))
+# current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+# parent_dir = os.path.dirname(current_dir)
+# sys.path.insert(0, parent_dir)
+# sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
+# print(f'path: {sys.path}')
 # local files
 from GUI import data_class
 
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+PROJECT_DIR = os.path.abspath(os.path.join(__location__, os.pardir, 'GUI'))
+
 TEST_DATE = "2022-11-18"
-SAVED_FILE_PATH = os.path.join('..', 'GUI', 'data', f"{TEST_DATE}.csv")
+# SAVED_FILE_PATH = os.path.join('..', 'GUI', 'data', f"{TEST_DATE}.csv")
+SAVED_FILE_PATH = os.path.join(PROJECT_DIR, 'data', f"{TEST_DATE}.csv")
+TEMPLATE_FILE = os.path.join(__location__, "template.csv")
+SORTED_TEMPLATE_FILE = os.path.join(__location__, "sorted_template.csv")
 
 DATA_PKT1 = b'{"time": "09:55:22", "date": "2022-11-18", "packet_id": 1, ' \
             b'"device": "position 2", "mode": "live", "OryConc": -20139, ' \
@@ -36,6 +48,11 @@ DATA_PKT3 = b'{"time": "10:06:13", "date": "2022-11-18", "packet_id": 4, ' \
             b'"device": "position 2", "mode": "live", "OryConc": -20648, ' \
             b'"CPUTemp": "47.24", "SensorTemp": 0}'
 DATA_PKT_OLD = b'{"time": "10:06:13", "date": "2022-11-17", "packet_id": 4, ' \
+               b'"device": "position 2", "mode": "live", "OryConc": -20648, ' \
+               b'"CPUTemp": "47.24", "SensorTemp": 0}'
+DATA_PKT_MISSING_DEVICE = b'{"time": "10:06:13", "date": "2022-11-17", "packet_id": 4, ' \
+               b'"mode": "live", "OryConc": -20648, "CPUTemp": "47.24", "SensorTemp": 0}'
+DATA_PKT_NEW = b'{"time": "00:06:13", "date": "2022-11-19", "packet_id": 4, ' \
                b'"device": "position 2", "mode": "live", "OryConc": -20648, ' \
                b'"CPUTemp": "47.24", "SensorTemp": 0}'
 CORRECT_PACKET_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
@@ -200,8 +217,7 @@ class TestAddDataPacket(unittest.TestCase):
         self.assertEqual(get_data_file(),
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
                          "09:55:22, position 2, -20139, , 48.31, 0, 1, \n",
-                         msg=f"Saved data file is not right for"
-                             f" {sys._getframe().f_code.co_name}")
+                         msg=f"Saved data file is not right for test_add_data_pkt")
 
     def test_add_2_pkts(self):
         """
@@ -231,8 +247,7 @@ class TestAddDataPacket(unittest.TestCase):
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
                          "09:55:22, position 2, -20139, , 48.31, 0, 1, \n"
                          "10:05:13, position 2, -20602, , 48.31, 41.79, 3, \n",
-                         msg=f"Saved data file is not right for "
-                             f"{sys._getframe().f_code.co_name}")
+                         msg=f"Saved data file is not right for test_add_2_pkts")
 
     def test_make_save_file(self):
         """
@@ -257,6 +272,56 @@ class TestAddDataPacket(unittest.TestCase):
                          msg="add_data is not returning an error code"
                              "for old data")
 
+    def test_new_date(self):
+        """ Test that when adding a packet with a date that simulates a new day """
+        returned_value = self.tsd.add_data(json.loads(DATA_PKT_NEW))
+        device_data = \
+            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
+        print(f"new returned value: {returned_value}")
+        print(f"new data: {device_data.oryzanol}")
+        self.assertEqual(returned_value, 0,
+                         msg="add_data is not returning a zero but an error code"
+                             "for changing the date forward")
+        self.assertListEqual(device_data.oryzanol, [-20648.0],
+                             msg="add_data is not saving the oryzanol value for a "
+                                 "data packet set for a new day")
+
+
+    def test_non_dict_data(self, mg):
+        """ Test that if a non-dict is passed to data_class.TimeStreamData
+        it just returns a 204 error code"""
+        returned_value = self.tsd.add_data("Not a dict")
+        self.assertEqual(returned_value, 204,
+                         msg="add_data is not returning the correct error code"
+                             "for a non-dictionary data type")
+
+    def test_missing_device_key(self, mg):
+        """ Test that if the data packet dictionary is missing a "device" or "position"
+        key that the add_data method returns the correct 200 error code" """
+        returned_value = self.tsd.add_data(json.loads(DATA_PKT_MISSING_DEVICE))
+        self.assertEqual(returned_value, 200,
+                         msg="add_data is not returning the correct error code"
+                             "for a data packet missing a device key")
+
+    def test_add_same_pkt_twice(self, mg):
+        """ Test that when a data packet is added twice, the second time
+        the packet is rejected and not added """
+        self.test_add_data_pkt()
+        returned_value = self.tsd.add_data(json.loads(DATA_PKT1))
+        device_data = \
+            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
+        self.assertEqual(returned_value, 222,
+                         msg="add_data is not returning a zero but an error code")
+        self.assertListEqual(device_data.time_series,
+                             [dt.datetime(2022, 11, 18, 9, 55, 22)],
+                             msg="add_data is not saving a single time_series "
+                                 "correctly")
+        self.assertListEqual(device_data.oryzanol, [-20139.0],
+                             msg="add_data is not saving a single oryzanol correctly")
+        self.assertEqual(get_data_file(), "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
+                                          "09:55:22, position 2, -20139, , 48.31, 0, 1, \n",
+                         msg=f"Saved data file is not right for test_add_data_pkt")
+
 
 @freezegun.freeze_time(TEST_DATE)
 class TestLoadData(unittest.TestCase):
@@ -272,8 +337,7 @@ class TestLoadData(unittest.TestCase):
         Take the template.csv file in the test folder and copy it
         into the data folder for the data_class to use.
         """
-        new_data_file = os.path.join('..', f"GUI/data/{TEST_DATE}.csv")
-        shutil.copyfile("template.csv", new_data_file)
+        shutil.copyfile(TEMPLATE_FILE, SAVED_FILE_PATH)
         with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
                         return_value=True) as mocked_gui:
             cls.tsd = data_class.TimeStreamData(mocked_gui)
@@ -293,7 +357,7 @@ class TestLoadData(unittest.TestCase):
         """
         # test if the function is sorting and saving correctly
         self.assertTrue(
-            filecmp.cmp(SAVED_FILE_PATH, "sorted_template.csv",
+            filecmp.cmp(SAVED_FILE_PATH, SORTED_TEMPLATE_FILE,
                         shallow=False),
             msg="Sorted file is not correct after loading and saving")
 
