@@ -287,7 +287,7 @@ class TestAddDataPacket(unittest.TestCase):
                                  "data packet set for a new day")
 
 
-    def test_non_dict_data(self, mg):
+    def test_non_dict_data(self):
         """ Test that if a non-dict is passed to data_class.TimeStreamData
         it just returns a 204 error code"""
         returned_value = self.tsd.add_data("Not a dict")
@@ -295,7 +295,7 @@ class TestAddDataPacket(unittest.TestCase):
                          msg="add_data is not returning the correct error code"
                              "for a non-dictionary data type")
 
-    def test_missing_device_key(self, mg):
+    def test_missing_device_key(self):
         """ Test that if the data packet dictionary is missing a "device" or "position"
         key that the add_data method returns the correct 200 error code" """
         returned_value = self.tsd.add_data(json.loads(DATA_PKT_MISSING_DEVICE))
@@ -303,7 +303,7 @@ class TestAddDataPacket(unittest.TestCase):
                          msg="add_data is not returning the correct error code"
                              "for a data packet missing a device key")
 
-    def test_add_same_pkt_twice(self, mg):
+    def test_add_same_pkt_twice(self):
         """ Test that when a data packet is added twice, the second time
         the packet is rejected and not added """
         self.test_add_data_pkt()
