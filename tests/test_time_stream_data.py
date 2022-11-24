@@ -51,6 +51,11 @@ DATA_PKT3 = b'{"time": "10:06:13", "date": "2022-11-18", "packet_id": 4, ' \
 DATA_PKT_OLD = b'{"time": "10:06:13", "date": "2022-11-17", "packet_id": 4, ' \
                b'"device": "position 2", "mode": "live", "OryConc": -20648, ' \
                b'"CPUTemp": "47.24", "SensorTemp": 0}'
+DATA_PKT_MISSING_DEVICE = b'{"time": "10:06:13", "date": "2022-11-17", "packet_id": 4, ' \
+               b'"mode": "live", "OryConc": -20648, "CPUTemp": "47.24", "SensorTemp": 0}'
+DATA_PKT_NEW = b'{"time": "00:06:13", "date": "2022-11-19", "packet_id": 4, ' \
+               b'"device": "position 2", "mode": "live", "OryConc": -20648, ' \
+               b'"CPUTemp": "47.24", "SensorTemp": 0}'
 CORRECT_PACKET_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
                       23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
                       43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
@@ -139,7 +144,7 @@ class TestAddDataPacket(unittest.TestCase):
                              msg="add_data is not saving a single oryzanol correctly")
         self.assertEqual(get_data_file(), "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
                                           "09:55:22, position 2, -20139, , 48.31, 0, 1, \n",
-                         msg=f"Saved data file is not right for {sys._getframe().f_code.co_name}")
+                         msg=f"Saved data file is not right for test_add_data_pkt")
 
     def test_add_2_pkts(self, mocked_gui):
         """
@@ -191,6 +196,56 @@ class TestAddDataPacket(unittest.TestCase):
         self.assertEqual(returned_value, 201,
                          msg="add_data is not returning an error code"
                              "for old data")
+
+    def test_new_date(self, mg):
+        """ Test that when adding a packet with a date that simulates a new day """
+        returned_value = self.tsd.add_data(json.loads(DATA_PKT_NEW))
+        device_data = \
+            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
+        print(f"new returned value: {returned_value}")
+        print(f"new data: {device_data.oryzanol}")
+        self.assertEqual(returned_value, 0,
+                         msg="add_data is not returning a zero but an error code"
+                             "for changing the date forward")
+        self.assertListEqual(device_data.oryzanol, [-20648.0],
+                             msg="add_data is not saving the oryzanol value for a "
+                                 "data packet set for a new day")
+
+
+    def test_non_dict_data(self, mg):
+        """ Test that if a non-dict is passed to data_class.TimeStreamData
+        it just returns a 204 error code"""
+        returned_value = self.tsd.add_data("Not a dict")
+        self.assertEqual(returned_value, 204,
+                         msg="add_data is not returning the correct error code"
+                             "for a non-dictionary data type")
+
+    def test_missing_device_key(self, mg):
+        """ Test that if the data packet dictionary is missing a "device" or "position"
+        key that the add_data method returns the correct 200 error code" """
+        returned_value = self.tsd.add_data(json.loads(DATA_PKT_MISSING_DEVICE))
+        self.assertEqual(returned_value, 200,
+                         msg="add_data is not returning the correct error code"
+                             "for a data packet missing a device key")
+
+    def test_add_same_pkt_twice(self, mg):
+        """ Test that when a data packet is added twice, the second time
+        the packet is rejected and not added """
+        self.test_add_data_pkt()
+        returned_value = self.tsd.add_data(json.loads(DATA_PKT1))
+        device_data = \
+            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
+        self.assertEqual(returned_value, 222,
+                         msg="add_data is not returning a zero but an error code")
+        self.assertListEqual(device_data.time_series,
+                             [dt.datetime(2022, 11, 18, 9, 55, 22)],
+                             msg="add_data is not saving a single time_series "
+                                 "correctly")
+        self.assertListEqual(device_data.oryzanol, [-20139.0],
+                             msg="add_data is not saving a single oryzanol correctly")
+        self.assertEqual(get_data_file(), "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
+                                          "09:55:22, position 2, -20139, , 48.31, 0, 1, \n",
+                         msg=f"Saved data file is not right for test_add_data_pkt")
 
 
 @freezegun.freeze_time(TEST_DATE)

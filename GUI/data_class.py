@@ -476,6 +476,7 @@ class TimeStreamData:
             # print("This is a different day")
             # test if date advanced at midnight and files need to update
             if packet_datetime == device_data.today + dt.timedelta(days=1):
+                # TODO: check the date is really changed
                 self.update_date(None)  # make the new file
                 device_data.update_date(None)  # tell device_data to update
             # elif packet_datetime == device_data.today - timedelta(days=1):
@@ -581,7 +582,7 @@ class TimeStreamData:
                     if "\n" not in data_list2[-1]:
                         _file.write("\n")
 
-    def check_missing_packets(self, device, pkts_sent):
+    def check_missing_packets_depr(self, device, pkts_sent):
         # look for missing packets
         print("time: ", dt.datetime.now().strftime("%H:%M:%S"))
         print(f"looking for missing packets for {device}")
