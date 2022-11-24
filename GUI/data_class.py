@@ -67,14 +67,14 @@ for header in FILE_HEADER:
     indices[header] = FILE_HEADER.index(header)
 
 
-def mean(_list: list):
+def mean_depr(_list: list):
     sum = 0
     for num in _list:
         sum += int(num)
     return sum / len(_list)
 
 
-def divide(list1: list, list2: list):
+def divide_depr(list1: list, list2: list):
     result = []
     for num1, num2 in zip(list1, list2):
         result.append(float(num1) / float(num2))
@@ -201,6 +201,7 @@ class DeviceData:
         self.av_rolling = []
 
         self.today = dt.datetime.today().date()
+        # print(f"making today: {self.today}")
         self.rolling_samples = rolling_samples
         self.ask_for_missing_packets = False
         self.last_packet_id = -1
@@ -245,9 +246,11 @@ class DeviceData:
 
     def add_data_pkt(self, data_pkt, models):
         # print(f"add data pkt: {data_pkt}")
+        # print(f"cwd data_class: {os.getcwd()}")
         insert_idx = self.check_pkt_id_get_insert_idx(data_pkt)
-        if insert_idx == None:
-            return  # no pkt id, or one already received
+        # print(f"insert index: {insert_idx}")
+        if insert_idx is None:
+            return None  # no pkt id, or one already received
         # print(f"sort idx: {insert_idx}, len packet id: {len(self.packet_ids)}")
         if "AV" in data_pkt:
             self.av.insert(insert_idx, float(data_pkt["AV"]))
@@ -341,7 +344,7 @@ class DeviceData:
 class TimeStreamData:
     def __init__(self, root_app):
         # print("Init Time Stream Data")
-        print(f"FILE HEADER: {FILE_HEADER}")
+        # print(f"FILE HEADER: {FILE_HEADER}")
         self.master_graph = root_app.graphs
         self.connection = None
         devices = DEVICES[:]  # copy to append to it
@@ -448,7 +451,7 @@ class TimeStreamData:
 
     def add_data(self, data_pkt: dict, save_data_pkt=True):
         # TODO: fix this, its a mess
-        print(f"data_pkt: {data_pkt}")
+        # print(f"data_pkt: {data_pkt}")
         if type(data_pkt) is not dict:
             return 204  # TODO: sometimes an int gets in here.  look at sensor code to fix
         # if data is from a database, it has to be converted first
@@ -484,9 +487,9 @@ class TimeStreamData:
         data_pkt = device_data.add_data_pkt(data_pkt, self.models)
         # device_data.resize_data()
         if not data_pkt:
-            return
-        print(f"ask 2: {self.already_asked_for_data}")
-        print(f"ask 2b: {device_data.ask_for_missing_packets}")
+            return 222
+        # print(f"ask 2: {self.already_asked_for_data}")
+        # print(f"ask 2b: {device_data.ask_for_missing_packets}")
         if data_pkt and device_data.ask_for_missing_packets and \
                 not self.already_asked_for_data:  # this is not data loaded from file
             # or the sensor is not currently sending saved data

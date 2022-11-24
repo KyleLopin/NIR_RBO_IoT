@@ -27,10 +27,17 @@ sys.path.append(os.path.join('..', 'GUI'))
 # sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
 # print(f'path: {sys.path}')
 # local files
-import GUI.data_class as data_class
+from GUI import data_class
+
+__location__ = os.path.realpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+PROJECT_DIR = os.path.abspath(os.path.join(__location__, os.pardir, 'GUI'))
 
 TEST_DATE = "2022-11-18"
-SAVED_FILE_PATH = os.path.join('..', 'GUI', 'data', f"{TEST_DATE}.csv")
+# SAVED_FILE_PATH = os.path.join('..', 'GUI', 'data', f"{TEST_DATE}.csv")
+SAVED_FILE_PATH = os.path.join(PROJECT_DIR, 'data', f"{TEST_DATE}.csv")
+TEMPLATE_FILE = os.path.join(__location__, "template.csv")
+SORTED_TEMPLATE_FILE = os.path.join(__location__, "sorted_template.csv")
 
 DATA_PKT1 = b'{"time": "09:55:22", "date": "2022-11-18", "packet_id": 1, ' \
             b'"device": "position 2", "mode": "live", "OryConc": -20139, ' \
@@ -200,8 +207,7 @@ class TestLoadData(unittest.TestCase):
         Take the template.csv file in the test folder and copy it
         into the data folder for the data_class to use.
         """
-        new_data_file = os.path.join('..', f"GUI/data/{TEST_DATE}.csv")
-        shutil.copyfile("template.csv", new_data_file)
+        shutil.copyfile(TEMPLATE_FILE, SAVED_FILE_PATH)
         with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
                         return_value=True) as mocked_gui:
             cls.tsd = data_class.TimeStreamData(mocked_gui)
@@ -221,7 +227,7 @@ class TestLoadData(unittest.TestCase):
         """
         # test if the function is sorting and saving correctly
         self.assertTrue(
-            filecmp.cmp(SAVED_FILE_PATH, "sorted_template.csv",
+            filecmp.cmp(SAVED_FILE_PATH, SORTED_TEMPLATE_FILE,
                         shallow=False),
             msg="Sorted file is not correct after loading and saving")
 
@@ -230,6 +236,8 @@ class TestLoadData(unittest.TestCase):
         Test that the packet ids that were loaded when from the saved
         file are correct
         """
+        # print(f"tds packets: {self.tsd.positions['position 2'].packet_ids}")
+        # print(f"correct ids: {CORRECT_PACKET_IDS}")
         self.assertListEqual(self.tsd.positions['position 2'].packet_ids,
                              CORRECT_PACKET_IDS, msg="packet_ids not correct")
 
