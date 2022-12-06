@@ -88,6 +88,7 @@ class Notebook(tk.Frame):
         self.update_ory(data.time_series,
                         data.oryzanol, position)
         if position == "position 1":
+            print(f"updating AV")
             self.update_av(data.time_series,
                            data.av, position)
 

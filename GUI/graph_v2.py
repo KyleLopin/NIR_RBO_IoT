@@ -108,7 +108,10 @@ class PyPlotFrame(tk.Frame):
         # print(f"update lines: {self.lines}")
         # print(f"updatex: {x}")
         if len(y) != len(x):
-            print(f"error in data, len s: {len(x)}, {len(y)}")
+            print(f"error in {label} data, len s: {len(x)}, {len(y)}")
+            print(x)
+            print(y)
+            return
         if len(x) == 0:  # sometimes the sensor data will just be
             # invalid measurements so this will get called with no data
             return

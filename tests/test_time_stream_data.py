@@ -1,7 +1,7 @@
 # Copyright (c) 2022 Kyle Lopin (Naresuan University) <kylel@nu.ac.th>
 
 """
-Test
+Test the data_class.TimeStreamData class
 """
 
 __author__ = "Kyle Vitautus Lopin"
@@ -55,6 +55,9 @@ DATA_PKT_MISSING_DEVICE = b'{"time": "10:06:13", "date": "2022-11-17", "packet_i
 DATA_PKT_NEW = b'{"time": "00:06:13", "date": "2022-11-19", "packet_id": 4, ' \
                b'"device": "position 2", "mode": "live", "OryConc": -20648, ' \
                b'"CPUTemp": "47.24", "SensorTemp": 0}'
+DATA_PKT_POSITION_1 = b'{"time": "00:06:13", "date": "2022-11-19", "packet_id": 4, ' \
+               b'"device": "position 1", "mode": "live", "OryConc": -20648, ' \
+               b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": 10}'
 CORRECT_PACKET_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
                       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
                       31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44,
@@ -286,7 +289,6 @@ class TestAddDataPacket(unittest.TestCase):
                              msg="add_data is not saving the oryzanol value for a "
                                  "data packet set for a new day")
 
-
     def test_non_dict_data(self):
         """ Test that if a non-dict is passed to data_class.TimeStreamData
         it just returns a 204 error code"""
@@ -379,3 +381,41 @@ class TestLoadData(unittest.TestCase):
         missing_pkts = self.tsd.find_next_missing_pkts(device_data, 1090)
         self.assertListEqual(missing_pkts, MISSING_PACKETS,
                              msg="Missing packets list wrong")
+
+
+@freezegun.freeze_time(TEST_DATE)
+class TestAddPos1DataPacket(unittest.TestCase):
+    def setUp(self) -> None:
+        """
+        Check that the tearDown method is clearing the saved files that are made,
+        initialize the data_class.TimeStreamData class and save to self.
+        """
+        if get_data_file() != "No file yet":  # make sure not file yet for this testcase
+            self.tearDown()
+        self.assertEqual(get_data_file(), "No file yet",
+                         msg="File is not being deleted between tests correctly")
+        with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
+                        return_value=True) as mocked_gui:
+            self.tsd = data_class.TimeStreamData(mocked_gui)
+
+    def tearDown(self) -> None:
+        """
+        Delete any saved filed for the simulated test data that
+        could have been made from adding a data packet
+        """
+        if os.path.exists(SAVED_FILE_PATH):
+            os.remove(SAVED_FILE_PATH)
+
+    def test_add_av(self):
+        print("keys: ", self.tsd.positions.keys())
+        data_dict = json.loads(DATA_PKT_POSITION_1)
+        returned_value = self.tsd.add_data(data_dict)
+        print(returned_value)
+        print(self.tsd.positions.keys())
+        device_data = \
+            self.tsd.positions["position 1"]  # type: GUI.data_class.DeviceData
+        # av_data = \
+        #     self.tsd.positions["av"]  # type: GUI.data_class.DeviceData
+        print(f"device data: {device_data.av}")
+        # print(f"av data: {av_data}")
+        print(get_data_file())

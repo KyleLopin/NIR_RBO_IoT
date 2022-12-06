@@ -45,8 +45,11 @@ class Models:
                 print(f"Skipping device: {device}, there is not model")
 
     def fit(self, raw_data, device):
-        print(f"models keys: {self.models.keys()}")
-        return self.models[device].fit(raw_data)
+        if device in self.models:
+            return self.models[device].fit(raw_data)
+        else:
+            print(f"{device} not in models keys\n"
+                  f"use one of these: {self.models.keys()}")
 
 
 class Model:

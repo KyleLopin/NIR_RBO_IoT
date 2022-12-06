@@ -198,13 +198,14 @@ class DataPacket:
 
 
 class DeviceData:
-    def __init__(self):
+    def __init__(self, use_av=False):
         self.time_series = []
         self.packet_ids = []
         self.cpu_temp = []
         self.sensor_temp = []
         self.oryzanol = []
         self.ory_rolling = []
+        self.use_av = use_av
         self.av = []
         self.av_rolling = []
 
@@ -260,9 +261,12 @@ class DeviceData:
         if insert_idx is None:
             return None  # no pkt id, or one already received
         # print(f"sort idx: {insert_idx}, len packet id: {len(self.packet_ids)}")
-        if "AV" in data_pkt:
+        if "AV" in data_pkt and data_pkt["AV"]:
             self.av.insert(insert_idx, float(data_pkt["AV"]))
-            print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
+            # print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
+        elif self.use_av:
+            self.av.insert(insert_idx, np.nan)
+
         if "device" in data_pkt:  # this is the code in the sensors still
             position = data_pkt["device"].strip()
         elif "position" in data_pkt:  # trying to move all code to here
@@ -431,7 +435,7 @@ class TimeStreamData:
 
     def add_device(self, position):
         # logging.info(f"adding device: {position} to data_class")
-        # print(f"adding device: {position} to data_class")
+        print(f"adding device: {position} to data_class")
         if position not in global_params.POSITIONS:
             # see if it was send as position and fix it
             try:
@@ -439,7 +443,10 @@ class TimeStreamData:
             except Exception as error:
                 print(f"{position} is not on the list")
         if position in global_params.POSITIONS:
-            self.positions[position] = DeviceData()
+            if position == "position 1":
+                self.positions[position] = DeviceData(use_av=True)
+            else:
+                self.positions[position] = DeviceData()
         else:
             print(f"{position} is not on the list, part 2")
 
@@ -536,7 +543,7 @@ class TimeStreamData:
             self.master_graph.update_roll(device, new_rolling_data)
 
     def update_graph(self, position):
-        print("Updating graph")
+        print(f"Updating graph for position: {position}")
         device_data = self.positions[position]  # type: DeviceData
         self.master_graph.update(position, device_data)
         self.update_after = None
