@@ -154,7 +154,7 @@ MISSING_PACKETS = [556, 557, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588,
 print(DATA_PKT1)
 
 
-def get_data_file() -> str:
+def get_data_file(path=SAVED_FILE_PATH) -> str:
     """
     Get the file where the data for the tests should be saved at and return
     it as a string
@@ -162,11 +162,13 @@ def get_data_file() -> str:
     Returns (str): string of data saved in the saved data file
 
     """
-    if os.path.isfile(SAVED_FILE_PATH):
-        with open(SAVED_FILE_PATH, 'r', encoding="utf-8") as _file:
+    if os.path.isfile(path):
+        with open(path, 'r', encoding="utf-8") as _file:
             return _file.read()
     else:
         return "No file yet"
+
+
 
 
 @freezegun.freeze_time(TEST_DATE)
@@ -261,33 +263,6 @@ class TestAddDataPacket(unittest.TestCase):
                                           " SensorTemp, packet_id\n",
                          msg="saved data file not being created correctly"
                              "on startup")
-
-    def test_old_data_pkt_added(self):
-        """Test if a packet with an older date is ignored by
-        the TimeStreamData class by returning the 201 code"""
-        returned_value = self.tsd.add_data(json.loads(DATA_PKT_OLD))
-        device_data = \
-            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
-        self.assertListEqual(device_data.oryzanol, [],
-                             msg="add_data is not ignoring an old "
-                                 "data packet correctly")
-        self.assertEqual(returned_value, 201,
-                         msg="add_data is not returning an error code"
-                             "for old data")
-
-    def test_new_date(self):
-        """ Test that when adding a packet with a date that simulates a new day """
-        returned_value = self.tsd.add_data(json.loads(DATA_PKT_NEW))
-        device_data = \
-            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
-        print(f"new returned value: {returned_value}")
-        print(f"new data: {device_data.oryzanol}")
-        self.assertEqual(returned_value, 0,
-                         msg="add_data is not returning a zero but an error code"
-                             "for changing the date forward")
-        self.assertListEqual(device_data.oryzanol, [-20648.0],
-                             msg="add_data is not saving the oryzanol value for a "
-                                 "data packet set for a new day")
 
     def test_non_dict_data(self):
         """ Test that if a non-dict is passed to data_class.TimeStreamData
@@ -416,6 +391,73 @@ class TestAddPos1DataPacket(unittest.TestCase):
             self.tsd.positions["position 1"]  # type: GUI.data_class.DeviceData
         # av_data = \
         #     self.tsd.positions["av"]  # type: GUI.data_class.DeviceData
-        print(f"device data: {device_data.av}")
+        print(f"device data: {device_data.time_series}")
+        print(f"device data: {device_data.oryzanol}")
         # print(f"av data: {av_data}")
         print(get_data_file())
+        self.assertEqual(returned_value, 0,
+                         msg="add_data is not returning a zero but an error code")
+        self.assertListEqual(device_data.time_series,
+                             [dt.datetime(2022, 11, 18, 0, 6, 13)],
+                             msg="add_data is not saving a single time_series "
+                                 "correctly")
+        self.assertListEqual(device_data.oryzanol, [-20648.0],
+                             msg="add_data is not saving a single oryzanol correctly")
+        self.assertListEqual(device_data.av, [10.0],
+                             msg="add_data is not saving a single oryzanol correctly")
+        self.assertEqual(get_data_file(),
+                         "time,position,OryConc,AV,CPUTemp,SensorTemp,packet_id\n"
+                         "00:06:13, position 1, -20648, 10, 47.24, 0, 4, \n",
+                         msg=f"Saved data file is not right for test_add_av")
+
+
+@freezegun.freeze_time(TEST_DATE)
+class TestChangeDate(unittest.TestCase):
+    def setUp(self) -> None:
+        """
+        Check that the tearDown method is clearing the saved files that are made,
+        initialize the data_class.TimeStreamData class and save to self.
+        """
+        if get_data_file() != "No file yet":  # make sure not file yet for this testcase
+            self.tearDown()
+        self.assertEqual(get_data_file(), "No file yet",
+                         msg="File is not being deleted between tests correctly")
+        with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
+                        return_value=True) as mocked_gui:
+            self.tsd = data_class.TimeStreamData(mocked_gui)
+
+    def tearDown(self) -> None:
+        """
+        Delete any saved filed for the simulated test data that
+        could have been made from adding a data packet
+        """
+        if os.path.exists(SAVED_FILE_PATH):
+            os.remove(SAVED_FILE_PATH)
+
+    def test_old_data_pkt_added(self):
+        """Test if a packet with an older date is ignored by
+        the TimeStreamData class by returning the 201 code"""
+        returned_value = self.tsd.add_data(json.loads(DATA_PKT_OLD))
+        device_data = \
+            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
+        self.assertListEqual(device_data.oryzanol, [],
+                             msg="add_data is not ignoring an old "
+                                 "data packet correctly")
+        self.assertEqual(returned_value, 201,
+                         msg="add_data is not returning an error code"
+                             "for old data")
+
+    def test_new_date(self):
+        """ Test that when adding a packet with a date that simulates a new day """
+        returned_value = self.tsd.add_data(json.loads(DATA_PKT_NEW))
+        device_data = \
+            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
+        print(f"new returned value: {returned_value}")
+        print(f"new data: {device_data.oryzanol}")
+        print(get_data_file())
+        self.assertEqual(returned_value, 0,
+                         msg="add_data is not returning a zero but an error code"
+                             "for changing the date forward")
+        self.assertListEqual(device_data.oryzanol, [-20648.0],
+                             msg="add_data is not saving the oryzanol value for a "
+                                 "data packet set for a new day")
