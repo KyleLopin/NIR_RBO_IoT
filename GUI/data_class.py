@@ -67,20 +67,20 @@ for header in FILE_HEADER:
     indices[header] = FILE_HEADER.index(header)
 
 
-def mean_depr(_list: list):
-    log_deprecation_violation("mean_depr called")
-    sum = 0
-    for num in _list:
-        sum += int(num)
-    return sum / len(_list)
+# def mean_depr(_list: list):
+#     log_deprecation_violation("mean_depr called")
+#     sum = 0
+#     for num in _list:
+#         sum += int(num)
+#     return sum / len(_list)
 
 
-def divide_depr(list1: list, list2: list):
-    log_deprecation_violation("divide_depr called")
-    result = []
-    for num1, num2 in zip(list1, list2):
-        result.append(float(num1) / float(num2))
-    return result
+# def divide_depr(list1: list, list2: list):
+#     log_deprecation_violation("divide_depr called")
+#     result = []
+#     for num1, num2 in zip(list1, list2):
+#         result.append(float(num1) / float(num2))
+#     return result
 
 
 def isfloat(str_to_test: str) -> bool:
@@ -597,57 +597,57 @@ class TimeStreamData:
                     if "\n" not in data_list2[-1]:
                         _file.write("\n")
 
-    def check_missing_packets_depr(self, device, pkts_sent):
-        log_deprecation_violation("check_missing_packets_depr used")
-        # look for missing packets
-        print("time: ", dt.datetime.now().strftime("%H:%M:%S"))
-        print(f"looking for missing packets for {device}")
-        device_data = self.positions[device]
-        print(f"device packets: {len(device_data.packet_ids)}, {device_data.packet_ids}")
-        if len(device_data.packet_ids) != 0:
-            missing_pkt = self.find_next_missing_pkts(self.positions[device], pkts_sent)
-        else:  # first connected, ask for data up till now
-            missing_pkt = [i for i in range(pkts_sent)]
-        print(f"going to ask for packets: {self.already_asked_for_data}")
-        if missing_pkt and not self.already_asked_for_data:
-            print(f"ask for packet: {missing_pkt}")
-            self.already_asked_for_data = True  # set message_id to not repeat ask
-            print(f"already asked for data: {self.already_asked_for_data}")
-            self.root_app.after(5*60000, self.clear_ask_for_data_flag)  # wait 10 mins and clear the message_id
-            self.connection.ask_for_stored_data(device, missing_pkt)
+    # def check_missing_packets_depr(self, device, pkts_sent):
+    #     log_deprecation_violation("check_missing_packets_depr used")
+    #     # look for missing packets
+    #     print("time: ", dt.datetime.now().strftime("%H:%M:%S"))
+    #     print(f"looking for missing packets for {device}")
+    #     device_data = self.positions[device]
+    #     print(f"device packets: {len(device_data.packet_ids)}, {device_data.packet_ids}")
+    #     if len(device_data.packet_ids) != 0:
+    #         missing_pkt = self.find_next_missing_pkts(self.positions[device], pkts_sent)
+    #     else:  # first connected, ask for data up till now
+    #         missing_pkt = [i for i in range(pkts_sent)]
+    #     print(f"going to ask for packets: {self.already_asked_for_data}")
+    #     if missing_pkt and not self.already_asked_for_data:
+    #         print(f"ask for packet: {missing_pkt}")
+    #         self.already_asked_for_data = True  # set message_id to not repeat ask
+    #         print(f"already asked for data: {self.already_asked_for_data}")
+    #         self.root_app.after(5*60000, self.clear_ask_for_data_flag)  # wait 10 mins and clear the message_id
+    #         self.connection.ask_for_stored_data(device, missing_pkt)
 
     def clear_ask_for_data_flag(self):
         self.already_asked_for_data = False
         print(f"cleared asked for data: {self.already_asked_for_data}")
 
-    def get_missing_packets_deprecated(self, device):
-        log_deprecation_violation("get_missing_packets_deprecated used")
+    # def get_missing_packets_deprecated(self, device):
+    #     log_deprecation_violation("get_missing_packets_deprecated used")
+    #
+    #     print(f"updating packets with remote data: {device}")
+    #     missing_ids = []
+    #     device_data = self.positions[device]
+    #     for i in range(1, device_data.latest_packet_id + 1):
+    #         print(f"comparing {i} in {device_data.packet_ids} or {device_data.stored_packets}")
+    #         if i not in device_data.packet_ids:
+    #             if i not in device_data.stored_packets:
+    #                 missing_ids.append(i)
+    #     return missing_ids
+    #     # self.check_prev_reads(device, self.devices[device].latest_packet_id)
 
-        print(f"updating packets with remote data: {device}")
-        missing_ids = []
-        device_data = self.positions[device]
-        for i in range(1, device_data.latest_packet_id + 1):
-            print(f"comparing {i} in {device_data.packet_ids} or {device_data.stored_packets}")
-            if i not in device_data.packet_ids:
-                if i not in device_data.stored_packets:
-                    missing_ids.append(i)
-        return missing_ids
-        # self.check_prev_reads(device, self.devices[device].latest_packet_id)
-
-    def check_prev_reads_dep(self, device, num_packets):
-        log_deprecation_violation("check_prev_reads_dep used")
-        print(f"Updating packets for {num_packets} packets")
-        # print(f"{self.devices}")
-        # print(f"for device: {device}")
-        # print(f"we have packets: {self.devices[device].packet_ids}")
-
-        for i in range(1, num_packets + 1):
-            # print(f"Comparing {i} in {self.devices[device].packet_ids}")
-            # print(f"{type(i)} {type(self.devices[device].packet_ids)} {type(self.devices[device].packet_ids[0])}")
-            if i in self.positions[device].packet_ids:
-                print(f"We already have packet: {i}")
-            else:
-                print(f"getting packet: {i}")
+    # def check_prev_reads_dep(self, device, num_packets):
+    #     log_deprecation_violation("check_prev_reads_dep used")
+    #     print(f"Updating packets for {num_packets} packets")
+    #     # print(f"{self.devices}")
+    #     # print(f"for device: {device}")
+    #     # print(f"we have packets: {self.devices[device].packet_ids}")
+    #
+    #     for i in range(1, num_packets + 1):
+    #         # print(f"Comparing {i} in {self.devices[device].packet_ids}")
+    #         # print(f"{type(i)} {type(self.devices[device].packet_ids)} {type(self.devices[device].packet_ids[0])}")
+    #         if i in self.positions[device].packet_ids:
+    #             print(f"We already have packet: {i}")
+    #         else:
+    #             print(f"getting packet: {i}")
 
     def update_latest_packet_id(self, device, pkt_num):
         # this is the first method to see the device so add it to devices

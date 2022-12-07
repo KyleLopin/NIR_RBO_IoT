@@ -8,7 +8,6 @@ __author__ = "Kyle Vitautus Lopin"
 
 # standard files
 import ast
-from datetime import datetime
 import json
 import logging
 import os
