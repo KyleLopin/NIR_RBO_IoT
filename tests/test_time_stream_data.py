@@ -33,8 +33,10 @@ __location__ = os.path.realpath(
 PROJECT_DIR = os.path.abspath(os.path.join(__location__, os.pardir, 'GUI'))
 
 TEST_DATE = "2022-11-18"
+NEXT_DATE = "2022-11-19"
 # SAVED_FILE_PATH = os.path.join('..', 'GUI', 'data', f"{TEST_DATE}.csv")
 SAVED_FILE_PATH = os.path.join(PROJECT_DIR, 'data', f"{TEST_DATE}.csv")
+TOMORROW_FILE_PATH = os.path.join(PROJECT_DIR, 'data', f"{NEXT_DATE}.csv")
 TEMPLATE_FILE = os.path.join(__location__, "template.csv")
 SORTED_TEMPLATE_FILE = os.path.join(__location__, "sorted_template.csv")
 
@@ -55,9 +57,15 @@ DATA_PKT_MISSING_DEVICE = b'{"time": "10:06:13", "date": "2022-11-17", "packet_i
 DATA_PKT_NEW = b'{"time": "00:06:13", "date": "2022-11-19", "packet_id": 4, ' \
                b'"device": "position 2", "mode": "live", "OryConc": -20648, ' \
                b'"CPUTemp": "47.24", "SensorTemp": 0}'
-DATA_PKT_POSITION_1 = b'{"time": "00:06:13", "date": "2022-11-19", "packet_id": 4, ' \
+DATA_PKT_POSITION_1 = b'{"time": "23:06:13", "date": "2022-11-18", "packet_id": 46, ' \
                b'"device": "position 1", "mode": "live", "OryConc": -20648, ' \
                b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": 10}'
+DATA_PKT_POSITION_1_2 = b'{"time": "00:07:13", "date": "2022-11-18", "packet_id": 5, ' \
+               b'"device": "position 1", "mode": "live", "OryConc": -20648, ' \
+               b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": 10}'
+DATA_PKT_POSITION_1_NEW = b'{"time": "00:07:13", "date": "2022-11-19", "packet_id": 4, ' \
+               b'"device": "position 1", "mode": "live", "OryConc": -20111, ' \
+               b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": 11}'
 CORRECT_PACKET_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
                       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
                       31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44,
@@ -167,8 +175,6 @@ def get_data_file(path=SAVED_FILE_PATH) -> str:
             return _file.read()
     else:
         return "No file yet"
-
-
 
 
 @freezegun.freeze_time(TEST_DATE)
@@ -398,7 +404,7 @@ class TestAddPos1DataPacket(unittest.TestCase):
         self.assertEqual(returned_value, 0,
                          msg="add_data is not returning a zero but an error code")
         self.assertListEqual(device_data.time_series,
-                             [dt.datetime(2022, 11, 18, 0, 6, 13)],
+                             [dt.datetime(2022, 11, 18, 23, 6, 13)],
                              msg="add_data is not saving a single time_series "
                                  "correctly")
         self.assertListEqual(device_data.oryzanol, [-20648.0],
@@ -406,8 +412,8 @@ class TestAddPos1DataPacket(unittest.TestCase):
         self.assertListEqual(device_data.av, [10.0],
                              msg="add_data is not saving a single oryzanol correctly")
         self.assertEqual(get_data_file(),
-                         "time,position,OryConc,AV,CPUTemp,SensorTemp,packet_id\n"
-                         "00:06:13, position 1, -20648, 10, 47.24, 0, 4, \n",
+                         "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
+                         "23:06:13, position 1, -20648, 10, 47.24, 0, 46, \n",
                          msg=f"Saved data file is not right for test_add_av")
 
 
@@ -433,6 +439,8 @@ class TestChangeDate(unittest.TestCase):
         """
         if os.path.exists(SAVED_FILE_PATH):
             os.remove(SAVED_FILE_PATH)
+        if os.path.exists(TOMORROW_FILE_PATH):
+            os.remove(TOMORROW_FILE_PATH)
 
     def test_old_data_pkt_added(self):
         """Test if a packet with an older date is ignored by
@@ -448,16 +456,45 @@ class TestChangeDate(unittest.TestCase):
                              "for old data")
 
     def test_new_date(self):
-        """ Test that when adding a packet with a date that simulates a new day """
+        """ Test that when adding a packet with a date that simulates a new day
+        first add DATA_PKT1 (device 2 11-18), """
+        # first repeat the adding data packet 1
+        data_dict = json.loads(DATA_PKT1)
+        returned_value = self.tsd.add_data(data_dict)
+        device_data = \
+            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
+        self.assertEqual(returned_value, 0,
+                         msg="add_data is not returning a zero but an error code")
+        self.assertListEqual(device_data.time_series,
+                             [dt.datetime(2022, 11, 18, 9, 55, 22)],
+                             msg="add_data is not saving a single time_series "
+                                 "correctly")
+        self.assertListEqual(device_data.oryzanol, [-20139.0],
+                             msg="add_data is not saving a single oryzanol correctly")
+        self.assertEqual(get_data_file(),
+                         "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
+                         "09:55:22, position 2, -20139, , 48.31, 0, 1, \n",
+                         msg=f"Saved data file is not right for test_add_data_pkt")
+        data_dict = json.loads(DATA_PKT_POSITION_1)
+        returned_value = self.tsd.add_data(data_dict)
+        freeze1 = freezegun.freeze_time(NEXT_DATE)
+        freeze1.start()
         returned_value = self.tsd.add_data(json.loads(DATA_PKT_NEW))
         device_data = \
             self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
-        print(f"new returned value: {returned_value}")
-        print(f"new data: {device_data.oryzanol}")
-        print(get_data_file())
+
+        returned_value = self.tsd.add_data(json.loads(DATA_PKT_POSITION_1_NEW))
+        device_data = \
+            self.tsd.positions["position 1"]  # type: GUI.data_class.DeviceData
         self.assertEqual(returned_value, 0,
                          msg="add_data is not returning a zero but an error code"
                              "for changing the date forward")
-        self.assertListEqual(device_data.oryzanol, [-20648.0],
+        self.assertListEqual(device_data.oryzanol, [-20111.0],
                              msg="add_data is not saving the oryzanol value for a "
                                  "data packet set for a new day")
+        self.assertEqual(get_data_file(TOMORROW_FILE_PATH),
+                         "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
+                         "00:06:13, position 2, -20648, , 47.24, 0, 4, \n"
+                         "00:07:13, position 1, -20111, 11, 47.24, 0, 4, \n",
+                         msg=f"Saved data file is not right for test_add_data_pkt")
+        freeze1.stop()
