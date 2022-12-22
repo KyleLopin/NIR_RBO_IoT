@@ -158,14 +158,14 @@ class BaseConnectionClass:
         self.client.loop_stop()
         self.client.disconnect()
 
-    def _on_message(self, client, userdata, msg):
+    def _on_message(self, client, userdata, msg: mqtt.MQTTMessage):
         """
         Handle all incoming message from the broker
         Args:
             client:  paho MQTT Client
             userdata: data associated with the MQTT channel, None now
-            msg (dict): JSON package directed from the MQTT broker, usually from
-            a sensor
+            msg (mqtt.MQTTMessage): JSON package directed from the MQTT broker,
+            usually from a sensor
         """
         print("Got message:", msg.topic, msg.payload)
         device = msg.topic.split("/")[1]
@@ -179,15 +179,11 @@ class BaseConnectionClass:
         else:  # the topic is not correct for a device
             return
         if 'data' in msg.topic:
-
             data_str = msg.payload.decode('utf8')
             # json_loaded = json.load(data_str)
             # json_data = json.dump(json_loaded, sort_keys=True)
             # self.parse_mqtt_data(ast.literal_eval(data_str))
             self.parse_mqtt_data(json.loads(data_str))
-        elif 'hub' in msg.topic:  #TODO: depericate this part
-            # mqtt hub is still connected
-            self.master.mqtt_broker_checkin = 0
         elif 'status' in msg.topic:
             # JSON converts False to false and True to true, fix that here
             payload = msg.payload.decode('utf8').replace("false", "False")

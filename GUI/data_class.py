@@ -472,7 +472,7 @@ class TimeStreamData:
 
     def add_data(self, data_pkt: dict, save_data_pkt=True):
         # TODO: fix this, its a mess
-        print(f"data_pkt: {data_pkt}")
+        # print(f"data_pkt: {data_pkt}")
         if type(data_pkt) is not dict:
             return 204  # TODO: sometimes an int gets in here.  look at sensor code to fix
         # if data is from a database, it has to be converted first
