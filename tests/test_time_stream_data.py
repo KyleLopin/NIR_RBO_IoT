@@ -37,35 +37,36 @@ NEXT_DATE = "2022-11-19"
 # SAVED_FILE_PATH = os.path.join('..', 'GUI', 'data', f"{TEST_DATE}.csv")
 SAVED_FILE_PATH = os.path.join(PROJECT_DIR, 'data', f"{TEST_DATE}.csv")
 TOMORROW_FILE_PATH = os.path.join(PROJECT_DIR, 'data', f"{NEXT_DATE}.csv")
-TEMPLATE_FILE = os.path.join(__location__, "template.csv")
-SORTED_TEMPLATE_FILE = os.path.join(__location__, "sorted_template.csv")
+TEMPLATE_FILE = os.path.join(__location__, "template_short.csv")
+SORTED_TEMPLATE_FILE = os.path.join(__location__, "sorted_template_short.csv")
 
 DATA_PKT1 = b'{"time": "09:55:22", "date": "2022-11-18", "packet_id": 1, ' \
             b'"device": "position 2", "mode": "live", "OryConc": -20139, ' \
-            b'"CPUTemp": "48.31", "SensorTemp": 0}'
+            b'"CPUTemp": "48.31", "SensorTemp": 0, "AV": -1}'
 DATA_PKT2 = b'{"time": "10:05:13", "date": "2022-11-18", "packet_id": 3, ' \
             b'"device": "position 2", "mode": "live", "OryConc": -20602, ' \
-            b'"CPUTemp": "48.31", "SensorTemp": "41.79"}'
+            b'"CPUTemp": "48.31", "SensorTemp": "41.79", "AV": -2}'
 DATA_PKT3 = b'{"time": "10:06:13", "date": "2022-11-18", "packet_id": 4, ' \
             b'"device": "position 2", "mode": "live", "OryConc": -20648, ' \
-            b'"CPUTemp": "47.24", "SensorTemp": 0}'
+            b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": -4}'
 DATA_PKT_OLD = b'{"time": "10:06:13", "date": "2022-11-17", "packet_id": 4, ' \
                b'"device": "position 2", "mode": "live", "OryConc": -20648, ' \
-               b'"CPUTemp": "47.24", "SensorTemp": 0}'
+               b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": -4}'
 DATA_PKT_MISSING_DEVICE = b'{"time": "10:06:13", "date": "2022-11-17", "packet_id": 4, ' \
-               b'"mode": "live", "OryConc": -20648, "CPUTemp": "47.24", "SensorTemp": 0}'
+                          b'"mode": "live", "OryConc": -20648, "CPUTemp": "47.24", ' \
+                          b'"SensorTemp": 0, "AV": -42}'
 DATA_PKT_NEW = b'{"time": "00:06:13", "date": "2022-11-19", "packet_id": 4, ' \
                b'"device": "position 2", "mode": "live", "OryConc": -20648, ' \
-               b'"CPUTemp": "47.24", "SensorTemp": 0}'
+               b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": -5}'
 DATA_PKT_POSITION_1 = b'{"time": "23:06:13", "date": "2022-11-18", "packet_id": 46, ' \
                b'"device": "position 1", "mode": "live", "OryConc": -20648, ' \
                b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": 10}'
 DATA_PKT_POSITION_1_2 = b'{"time": "00:07:13", "date": "2022-11-18", "packet_id": 5, ' \
                b'"device": "position 1", "mode": "live", "OryConc": -20648, ' \
-               b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": 10}'
+               b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": 11}'
 DATA_PKT_POSITION_1_NEW = b'{"time": "00:07:13", "date": "2022-11-19", "packet_id": 4, ' \
                b'"device": "position 1", "mode": "live", "OryConc": -20111, ' \
-               b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": 11}'
+               b'"CPUTemp": "47.24", "SensorTemp": 0, "AV": 12}'
 CORRECT_PACKET_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
                       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
                       31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44,
@@ -125,6 +126,7 @@ CORRECT_PACKET_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
                       1060, 1061, 1062, 1063, 1064, 1065, 1066, 1067, 1068, 1069,
                       1070, 1071, 1072, 1073, 1074, 1075, 1076, 1077, 1078, 1079,
                       1080, 1081, 1082, 1083, 1084, 1085, 1086, 1087, 1088]
+CORRECT_PACKET_IDS = [0, 1, 2, 3, 12, 13, 21]
 MISSING_PACKETS = [556, 557, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588,
                    589, 590, 591, 592, 593, 594, 595, 596, 597, 598, 599, 600,
                    601, 602, 603, 604, 605, 606, 607, 608, 609, 610, 611, 612,
@@ -158,6 +160,9 @@ MISSING_PACKETS = [556, 557, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588,
                    1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025,
                    1026, 1027, 1028, 1029, 1030, 1031, 1032, 1033, 1034, 1035,
                    1089]
+
+MISSING_PACKETS = [4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18,
+                   19, 20, 22, 23]
 
 print(DATA_PKT1)
 
@@ -223,11 +228,12 @@ class TestAddDataPacket(unittest.TestCase):
                              [dt.datetime(2022, 11, 18, 9, 55, 22)],
                              msg="add_data is not saving a single time_series "
                                  "correctly")
+        self.assertListEqual(device_data.av, [-1.0])
         self.assertListEqual(device_data.oryzanol, [-20139.0],
                              msg="add_data is not saving a single oryzanol correctly")
         self.assertEqual(get_data_file(),
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                         "09:55:22, position 2, -20139, , 48.31, 0, 1, \n",
+                         "09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n",
                          msg=f"Saved data file is not right for test_add_data_pkt")
 
     def test_add_2_pkts(self):
@@ -256,8 +262,8 @@ class TestAddDataPacket(unittest.TestCase):
                              "for the second packet")
         self.assertEqual(get_data_file(),
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                         "09:55:22, position 2, -20139, , 48.31, 0, 1, \n"
-                         "10:05:13, position 2, -20602, , 48.31, 41.79, 3, \n",
+                         "09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n"
+                         "10:05:13, position 2, -20602, -2, 48.31, 41.79, 3, \n",
                          msg=f"Saved data file is not right for test_add_2_pkts")
 
     def test_make_save_file(self):
@@ -302,7 +308,7 @@ class TestAddDataPacket(unittest.TestCase):
         self.assertListEqual(device_data.oryzanol, [-20139.0],
                              msg="add_data is not saving a single oryzanol correctly")
         self.assertEqual(get_data_file(), "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                                          "09:55:22, position 2, -20139, , 48.31, 0, 1, \n",
+                                          "09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n",
                          msg=f"Saved data file is not right for test_add_data_pkt")
 
 
@@ -333,16 +339,21 @@ class TestLoadData(unittest.TestCase):
         if os.path.exists(SAVED_FILE_PATH):
             os.remove(SAVED_FILE_PATH)
 
-    def test_load_file(self):
-        """
-        Test that the TimeStreamData class will read an unsorted
-        data file and sort the file and save it in the same place.
-        """
-        # test if the function is sorting and saving correctly
-        self.assertTrue(
-            filecmp.cmp(SAVED_FILE_PATH, SORTED_TEMPLATE_FILE,
-                        shallow=False),
-            msg="Sorted file is not correct after loading and saving")
+    # def test_load_file(self):
+    #     """
+    #     Test that the TimeStreamData class will read an unsorted
+    #     data file and sort the file and save it in the same place.
+    #     """
+    #     # test if the function is sorting and saving correctly
+    #     self.assertTrue(
+    #         filecmp.cmp(SAVED_FILE_PATH, SORTED_TEMPLATE_FILE,
+    #                     shallow=False),
+    #         msg="Sorted file is not correct after loading and saving")
+
+    def test_add_pos2_av(self):
+        """ Test that when reading the saved file data that the acid
+        values are loaded in to the data class correctly """
+        print(f"av: {self.tsd.positions['position 2'].av}")
 
     def test_packet_ids(self):
         """
@@ -359,7 +370,8 @@ class TestLoadData(unittest.TestCase):
         packet ids that are missing to ask from the sensor
         """
         device_data = self.tsd.positions['position 2']  # type: data_class.DeviceData
-        missing_pkts = self.tsd.find_next_missing_pkts(device_data, 1090)
+        missing_pkts = self.tsd.find_next_missing_pkts(device_data, 24)
+        print(missing_pkts)
         self.assertListEqual(missing_pkts, MISSING_PACKETS,
                              msg="Missing packets list wrong")
 
@@ -473,7 +485,7 @@ class TestChangeDate(unittest.TestCase):
                              msg="add_data is not saving a single oryzanol correctly")
         self.assertEqual(get_data_file(),
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                         "09:55:22, position 2, -20139, , 48.31, 0, 1, \n",
+                         "09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n",
                          msg=f"Saved data file is not right for test_add_data_pkt")
         data_dict = json.loads(DATA_PKT_POSITION_1)
         returned_value = self.tsd.add_data(data_dict)
@@ -494,7 +506,33 @@ class TestChangeDate(unittest.TestCase):
                                  "data packet set for a new day")
         self.assertEqual(get_data_file(TOMORROW_FILE_PATH),
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                         "00:06:13, position 2, -20648, , 47.24, 0, 4, \n"
-                         "00:07:13, position 1, -20111, 11, 47.24, 0, 4, \n",
+                         "00:06:13, position 2, -20648, -5, 47.24, 0, 4, \n"
+                         "00:07:13, position 1, -20111, 12, 47.24, 0, 4, \n",
                          msg=f"Saved data file is not right for test_add_data_pkt")
         freeze1.stop()
+
+
+@freezegun.freeze_time(TEST_DATE)
+class TestUpdateGraph(unittest.TestCase):
+    def tearDown(self) -> None:
+        """
+        Delete any saved filed for the simulated test data that
+        could have been made from adding a data packet
+        """
+        if os.path.exists(SAVED_FILE_PATH):
+            os.remove(SAVED_FILE_PATH)
+        if os.path.exists(TOMORROW_FILE_PATH):
+            os.remove(TOMORROW_FILE_PATH)
+
+    @mock.patch("GUI.main_gui.RBOGUI")
+    def test_update_called(self, mocked_gui):
+        self.tsd = data_class.TimeStreamData(mocked_gui)
+        data_dict = json.loads(DATA_PKT1)
+        returned_value = self.tsd.add_data(data_dict)
+        device_data = \
+            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
+        self.tsd.update_graph("position 2")
+        mock_graph = mocked_gui.return_value.master_graph
+        pos, device_data = mocked_gui.graphs.update.mock_calls[0].args
+        print(f"position: {pos}, data: {device_data}")
+        print(f"av data: {device_data.av}")

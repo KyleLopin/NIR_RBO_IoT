@@ -174,7 +174,7 @@ class BaseConnectionClass:
         # to position, i.e. "position 2" for the rest of this program
         if device in global_params.DEVICES:
             position = global_params.DEVICES[device]
-            # update the user information frame the sensor is working
+            # update the usexr information frame the sensor is working
             self.master.info.check_in(position)
         else:  # the topic is not correct for a device
             return
@@ -430,15 +430,15 @@ class BaseConnectionClass:
         else:  # mac or windows should look for external
             mqtt_server_name = self.mqtt_servers[self.mqtt_server_index]
             self.mqtt_server_index = (self.mqtt_server_index + 1) % len(self.mqtt_servers)
-        print(f"connecting to: {mqtt_server_name}")
+        # print(f"connecting to: {mqtt_server_name}")
         try:
             result = self.client.connect(mqtt_server_name, 1883, 60)
             print(f"mqtt result: {result}")
             if result == 0:
                 print("Subscribing")
         except Exception as e:
-            print(f"connection error: {e}")
-            print(type(e))
+            # print(f"connection error: {e}")
+            # print(type(e))
             if 'actively refused' in str(e):
                 print(f"delete the ip: {mqtt_server_name} from list")
                 self.mqtt_servers.remove(mqtt_server_name)

@@ -2,6 +2,19 @@
 
 """
 
+The model files are in the sensor_models.json with a structure:
+{ "device_1": {"Dark Intensities": [...],
+               "Ref Intensities": [...],
+               "models": {"Ory": {"Constant": [.],
+                                  "Coeffs": [...],
+                                  "abs_signal_process: [...]},
+                          "AV": {"Constant": [.],
+                                 "Coeffs": [...],
+                                 "abs_signal_process: [...]}
+                          }
+               },
+  "device_2": .... etc.
+}
 """
 
 __author__ = "Kyle Vitatus Lopin"
@@ -22,15 +35,17 @@ __location__ = os.path.realpath(
 
 
 DEVICES = global_params.DEVICES
+# MODEL_FILE = "sensor_models.json"
+MODEL_FILE = "new_models.json"
 
 
 class Models:
     def __init__(self, devices):
         # open json file to get model params
-        with open(os.path.join(__location__, "new_models.json"), "r") as _file:
+        with open(os.path.join(__location__, MODEL_FILE), "r") as _file:
             json_data = json.load(_file)
         # print("model data")
-        # print(json_data)
+        print(json_data)
         self.models = dict()
         for device in devices:
             # print(f"making model for device: {device}")

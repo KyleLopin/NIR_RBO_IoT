@@ -254,7 +254,7 @@ class DeviceData:
         self.lost_pkt_ptr = None  # use this to find missing pkts
 
     def add_data_pkt(self, data_pkt, models):
-        # print(f"add data pkt: {data_pkt}")
+        print(f"add data pkt: {data_pkt}")
         # print(f"cwd data_class: {os.getcwd()}")
         insert_idx = self.check_pkt_id_get_insert_idx(data_pkt)
         # print(f"insert index: {insert_idx}")
@@ -275,7 +275,7 @@ class DeviceData:
             raise KeyError("data packet has to have 'position' or 'device' in it")
 
         device = global_params.POSITIONS[position]
-
+        # print(f"device: {device}")
         if USE_LOCAL_MODEL and ("Raw_data" in data_pkt):
             raw_data = [float(x) for x in data_pkt["Raw_data"]]
             ory_conc = models.fit(raw_data, device)
@@ -410,14 +410,14 @@ class TimeStreamData:
             self.make_file(self.save_raw_data_file, RAW_DATA_HEADERS)
 
     def load_previous_data(self):
-        # print(f"load file: {self.save_file}")
+        print(f"load file: {self.save_file}")
         with open(self.save_file) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             line_count = 0
             for row in csv_reader:
                 # print(f"line count: {line_count}, len row: {len(row)}")
-                if line_count != 0 and len(row)>=7:
-                    # print(f"load row: {row}")
+                if line_count != 0 and len(row) >= 7:
+                    print(f"load row: {row}")
                     self.add_csv_data(row)
                 line_count += 1
 
@@ -449,7 +449,7 @@ class TimeStreamData:
             except Exception as error:
                 print(f"{position} is not on the list")
         if position in global_params.POSITIONS:
-            if position == "position 1":
+            if position == "position 1" or position == "position 2":
                 self.positions[position] = DeviceData(use_av=True)
             else:
                 self.positions[position] = DeviceData()
@@ -460,7 +460,7 @@ class TimeStreamData:
         """ Add data from a csv row, this will be saved data """
         # position = csv_row[indices["position"]].strip()
         data_pkt = convert_csv_row_to_packet(csv_row)
-        # print(f"adding data_pkt: {data_pkt}")
+        print(f"adding data_pkt: {data_pkt}")
         position = data_pkt["position"]
         # print(f"adding csv data for position: {position}")
         if position:
