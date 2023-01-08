@@ -34,6 +34,7 @@ SAVED_FILE_PATH = os.path.join(PROJECT_DIR, 'data', f"{TEST_DATE}.csv")
 TOMORROW_FILE_PATH = os.path.join(PROJECT_DIR, 'data', f"{NEXT_DATE}.csv")
 TEMPLATE_FILE = os.path.join(__location__, "template_short.csv")
 SORTED_TEMPLATE_FILE = os.path.join(__location__, "sorted_template_short.csv")
+MISSING_AV_FILE = os.path.join(__location__, "test_mixed_av.csv")
 
 DATA_PKT1 = b'{"time": "09:55:22", "date": "2022-11-18", "packet_id": 1, ' \
             b'"device": "position 2", "mode": "live", "OryConc": -20139, ' \
@@ -550,3 +551,26 @@ class TestLoadPreviousData(unittest.TestCase):
             self.tsd = data_class.TimeStreamData(mocked_gui)
 
             self.assertListEqual(self.tsd.positions['position 2'].av, [-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0])
+
+
+class TestLoadMixedData(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        """
+        Take the template_short.csv file in the test folder and copy it
+        into the data folder for the data_class to use.
+        """
+        shutil.copyfile(MISSING_AV_FILE, SAVED_FILE_PATH)
+
+    def test_load_previous_data_w_missing_av(self):
+        """ TimeStreamData will attempt to load previous data"""
+        with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
+                        return_value=True) as mocked_gui:
+            self.tsd = data_class.TimeStreamData(mocked_gui)
+
+            # self.assertListEqual(self.tsd.positions['position 2'].av, [-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0])
+            print(f"av: {self.tsd.positions['position 2'].av}")
+
+
+if __name__ == '__main__':
+    unittest.main()
