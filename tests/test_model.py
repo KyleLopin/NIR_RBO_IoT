@@ -18,4 +18,4 @@ from GUI import model
 
 class TestTimeStreamDataStruct(unittest.TestCase):
     def test_models_structure(self):
-        self.models = model.Models()
+        self.models = model.Models(["device_1"])

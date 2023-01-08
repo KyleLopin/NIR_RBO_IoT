@@ -114,6 +114,10 @@ def convert_csv_row_to_packet(csv_row):
     for obj in ["CPUTemp", "SensorTemp", "OryConc"]:
         if isfloat(csv_row[indices[obj]]):
             pkt[obj] = float(csv_row[indices[obj]])
+    try:  # this will be a ' ' if there is no AV key
+        pkt['AV'] = float(csv_row[indices['AV']])
+    except:
+        pkt['AV'] = None
     return pkt
 
 
@@ -262,6 +266,7 @@ class DeviceData:
             return None  # no pkt id, or one already received
         # print(f"sort idx: {insert_idx}, len packet id: {len(self.packet_ids)}")
         if "AV" in data_pkt and data_pkt["AV"]:
+            print(f"inserting AV: {data_pkt['AV']}")
             self.av.insert(insert_idx, float(data_pkt["AV"]))
             # print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
         elif self.use_av:

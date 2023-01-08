@@ -120,6 +120,11 @@ class Notebook(tk.Frame):
                               show_mean=False)
         # print(sensor_mask)
         # print(np.array(time)[sensor_mask.mask])
+        if len(time) != len(sensor_mask.mask) or \
+                len(sensor_temp) != len(sensor_mask.mask):
+            print("Error in lent of sensor temp mask")
+            print(np.array(time)[sensor_mask.mask])
+            print(np.array(sensor_temp)[sensor_mask.mask])
         self.temp_plot.update(np.array(time)[sensor_mask.mask],
                               np.array(sensor_temp)[sensor_mask.mask],
                               label=f"Sensor {_position}",

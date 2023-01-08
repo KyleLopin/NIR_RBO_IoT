@@ -20,11 +20,6 @@ from unittest import mock
 import freezegun
 
 sys.path.append(os.path.join('..', 'GUI'))
-# current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-# parent_dir = os.path.dirname(current_dir)
-# sys.path.insert(0, parent_dir)
-# sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
-# print(f'path: {sys.path}')
 # local files
 from GUI import data_class
 
@@ -536,3 +531,22 @@ class TestUpdateGraph(unittest.TestCase):
         pos, device_data = mocked_gui.graphs.update.mock_calls[0].args
         print(f"position: {pos}, data: {device_data}")
         print(f"av data: {device_data.av}")
+
+
+@freezegun.freeze_time(TEST_DATE)
+class TestLoadPreviousData(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        """
+        Take the template_short.csv file in the test folder and copy it
+        into the data folder for the data_class to use.
+        """
+        shutil.copyfile(TEMPLATE_FILE, SAVED_FILE_PATH)
+
+    def test_load_previous_data(self):
+        """ TimeStreamData will attempt to load previous data"""
+        with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
+                        return_value=True) as mocked_gui:
+            self.tsd = data_class.TimeStreamData(mocked_gui)
+
+            self.assertListEqual(self.tsd.positions['position 2'].av, [-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0])
