@@ -86,6 +86,8 @@ class SensorInfoFrame(tk.Frame):
     def check_device(self):
         print(f"checking device at {self.position}")
         device = self.position
+        if not self.conn:  # this can be None if started too fast? or not internet?
+            return  # just pass else it will cause an error
         if self.sensor_state == SENSOR_OFFLINE:
             # check if the device_number is connected yet
             self.conn.check_connection(device)
