@@ -423,7 +423,7 @@ class BaseConnectionClass:
         self.publish(device_topic, payload, qos=0)
 
     def connect(self):
-        print(f"name: {os.name}")
+        # print(f"name: {os.name}")
         if os.name == "posix":
             # raspberry pi which should be running the
             mqtt_server_name = MQTT_LOCALHOST
