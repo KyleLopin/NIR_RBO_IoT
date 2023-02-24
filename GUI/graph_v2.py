@@ -23,7 +23,8 @@ import numpy as np
 
 # local files
 import global_params
-plt.style.use("seaborn")
+# plt.style.use("seaborn")
+plt.style.use("seaborn-v0_8")
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -40,6 +41,8 @@ COLORS = {"position 1": "orangered",
           "Sensor position 2": "springgreen",
           "Sensor position 3": "dodgerblue",
           "AV": "slategray"}
+HLINE_COLORS = ['goldenrod', 'goldenrod',
+                'darkgoldenrod', 'darkgoldenrod']
 
 with open(os.path.join(__location__, "master_settings.json")) as _file:
     json_data2 = _file.read()
@@ -55,13 +58,18 @@ ROLL_ALPHA = 1.0
 LINE_ALPHA = 0.2
 
 
+
 class PyPlotFrame(tk.Frame):
     def __init__(self, parent, root_app: tk.Tk,
                  fig_size=(3, 3), xlabel=None,
                  ylabel=None, xlim=None,
-                 ylim=None):
+                 ylim=None, allow_zoom=False,
+                 hlines: list=None,
+                 use_log=False):
         tk.Frame.__init__(self, master=parent)
         self.root_app = root_app
+        self.allow_zoom = allow_zoom
+        self.ylim = ylim
         self.config(bg='white')
 
         # routine to make and embed the matplotlib graph
@@ -83,6 +91,10 @@ class PyPlotFrame(tk.Frame):
             self.axis.set_ylim(ylim)
         if xlim:
             self.axis.set_xlim(xlim)
+
+        if use_log:
+            self.axis.set_yscale('log')
+
         else:  # can cause error if not set on raspberry pi python 3.7
             now = datetime.now()
             self.axis.set_xlim([now-timedelta(minutes=5), now+timedelta(minutes=5)])
@@ -99,8 +111,14 @@ class PyPlotFrame(tk.Frame):
         self.rect = None
         self.zoom_coords = []
         self.zoomed = False
-        self.canvas.mpl_connect("button_press_event", self._button_press)
-        self.canvas.mpl_connect("button_release_event", self._on_release)
+        if allow_zoom:
+            self.canvas.mpl_connect("button_press_event", self._button_press)
+            self.canvas.mpl_connect("button_release_event", self._on_release)
+
+        if hlines:
+            for i, hline in enumerate(hlines):
+                self.axis.axhline(y=hline, color=HLINE_COLORS[i],
+                                  ls='--')
 
     def update(self, x, y, label=None,
                show_mean=True):
@@ -109,8 +127,6 @@ class PyPlotFrame(tk.Frame):
         # print(f"updatex: {x}")
         if len(y) != len(x):
             print(f"error in {label} data, len s: {len(x)}, {len(y)}")
-            print(x)
-            print(y)
             return
         if len(x) == 0:  # sometimes the sensor data will just be
             # invalid measurements so this will get called with no data
@@ -148,9 +164,12 @@ class PyPlotFrame(tk.Frame):
                 self.mean_lines[label].set_ydata(rolling_data)
 
         if not self.zoomed and label != "blank":
-            # print("relim axis")
+            print("relim axis")
             self.axis.relim()
             self.axis.autoscale()
+            if self.ylim:
+                self.axis.set_xlim(self.ylim)
+
             # tick_skips = len(x) // 6
             # print(f"tick skips: {tick_skips}")
             # self.axis.set_xticks(self.axis.get_xticks()[::tick_skips])
@@ -275,3 +294,18 @@ class PyPlotFrame(tk.Frame):
             self.axis.set_xlim([x2, x1])
         else:
             self.axis.set_xlim([x1, x2])
+
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    plot = PyPlotFrame(root, root,
+                       fig_size=(9, 4),
+                       ylim=[0, 16000],
+                       hlines=[3500, 5000, 8000, 10000])
+    # plot = PyPlotFrame(root, root,
+    #                    fig_size=(9, 4),
+    #                    ylim=[0.1, 100],
+    #                    use_log=True)
+    # plot.update([0, .1], [1, -5])
+    plot.pack()
+    root.mainloop()

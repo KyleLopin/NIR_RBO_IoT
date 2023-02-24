@@ -335,16 +335,16 @@ class TestLoadData(unittest.TestCase):
         if os.path.exists(SAVED_FILE_PATH):
             os.remove(SAVED_FILE_PATH)
 
-    # def test_load_file(self):
-    #     """
-    #     Test that the TimeStreamData class will read an unsorted
-    #     data file and sort the file and save it in the same place.
-    #     """
-    #     # test if the function is sorting and saving correctly
-    #     self.assertTrue(
-    #         filecmp.cmp(SAVED_FILE_PATH, SORTED_TEMPLATE_FILE,
-    #                     shallow=False),
-    #         msg="Sorted file is not correct after loading and saving")
+    def test_load_file(self):
+        """
+        Test that the TimeStreamData class will read an unsorted
+        data file and sort the file and save it in the same place.
+        """
+        # test if the function is sorting and saving correctly
+        self.assertTrue(
+            filecmp.cmp(SAVED_FILE_PATH, SORTED_TEMPLATE_FILE,
+                        shallow=False),
+            msg="Sorted file is not correct after loading and saving")
 
     def test_add_pos2_av(self):
         """ Test that when reading the saved file data that the acid

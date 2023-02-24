@@ -47,17 +47,22 @@ class Notebook(tk.Frame):
         self.ory_plot = graph.PyPlotFrame(notebook, root_app,
                                           fig_size=(9, 4),
                                           ylabel="Oryzanol Concentrations",
-                                          xlabel="Time")
+                                          xlabel="Time",
+                                          xlim=[0, 16000],
+                                          hlines=[3500, 5000, 8000, 10000])
         self.ory_plot.pack()
         self.av_plot = graph.PyPlotFrame(notebook, root_app,
                                          fig_size=(9, 4),
                                          ylabel="Acid Value",
-                                         xlabel="Time")
+                                         xlabel="Time",
+                                         ylim=[0.1, 100],
+                                         use_log=True)
         self.av_plot.pack()
         self.temp_plot = graph.PyPlotFrame(notebook, root_app,
                                            fig_size=(9, 4),
                                            ylabel="Temperature",
-                                           xlabel="Time")
+                                           xlabel="Time",
+                                           allow_zoom=True)
         self.temp_plot.pack()
 
         _refl_frame = tk.Frame(notebook)
@@ -89,6 +94,7 @@ class Notebook(tk.Frame):
                         data.oryzanol, position)
         if position == "position 1" or position == "position 2":
             print(f"updating AV")
+            print(data.av)
             self.update_av(data.time_series,
                            data.av, position)
 
@@ -123,6 +129,8 @@ class Notebook(tk.Frame):
         if len(time) != len(sensor_mask.mask) or \
                 len(sensor_temp) != len(sensor_mask.mask):
             print("Error in lent of sensor temp mask")
+            print(f"len time {len(np.array(time)[sensor_mask.mask])}"
+                  f" len temp {len(np.array(sensor_temp)[sensor_mask.mask])}")
             print(np.array(time)[sensor_mask.mask])
             print(np.array(sensor_temp)[sensor_mask.mask])
         self.temp_plot.update(np.array(time)[sensor_mask.mask],
