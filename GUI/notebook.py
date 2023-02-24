@@ -48,7 +48,7 @@ class Notebook(tk.Frame):
                                           fig_size=(9, 4),
                                           ylabel="Oryzanol Concentrations",
                                           xlabel="Time",
-                                          xlim=[0, 16000],
+                                          ylim=[0, 16000],
                                           hlines=[3500, 5000, 8000, 10000])
         self.ory_plot.pack()
         self.av_plot = graph.PyPlotFrame(notebook, root_app,
@@ -94,7 +94,7 @@ class Notebook(tk.Frame):
                         data.oryzanol, position)
         if position == "position 1" or position == "position 2":
             print(f"updating AV")
-            print(data.av)
+            # print(data.av)
             self.update_av(data.time_series,
                            data.av, position)
 
@@ -113,7 +113,8 @@ class Notebook(tk.Frame):
                              label=_position)
 
     def update_av(self, time, av, device):
-        # print("update av")
+        print("update av")
+        print(time, av)
         self.av_plot.update(time, av,
                             label=device)
 

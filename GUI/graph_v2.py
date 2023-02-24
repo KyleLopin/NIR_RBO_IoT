@@ -122,6 +122,17 @@ class PyPlotFrame(tk.Frame):
 
     def update(self, x, y, label=None,
                show_mean=True):
+        """
+
+        Args:
+            x: list[datetime.datetime]
+            y:
+            label:
+            show_mean:
+
+        Returns:
+
+        """
         # print(f"update: {label}, {len(y)}, {len(x)}")
         # print(f"update lines: {self.lines}")
         # print(f"updatex: {x}")
@@ -163,13 +174,14 @@ class PyPlotFrame(tk.Frame):
                 self.mean_lines[label].set_xdata(x)
                 self.mean_lines[label].set_ydata(rolling_data)
 
+        # print(f"check1 {self.zoomed}, {label}")
         if not self.zoomed and label != "blank":
-            print("relim axis")
+            # print("relim axis", self.ylim)
             self.axis.relim()
             self.axis.autoscale()
             if self.ylim:
-                self.axis.set_xlim(self.ylim)
-
+                # print("setting ylim")
+                self.axis.set_ylim(self.ylim)
             # tick_skips = len(x) // 6
             # print(f"tick skips: {tick_skips}")
             # self.axis.set_xticks(self.axis.get_xticks()[::tick_skips])
@@ -298,14 +310,15 @@ class PyPlotFrame(tk.Frame):
 
 if __name__ == '__main__':
     root = tk.Tk()
-    plot = PyPlotFrame(root, root,
-                       fig_size=(9, 4),
-                       ylim=[0, 16000],
-                       hlines=[3500, 5000, 8000, 10000])
     # plot = PyPlotFrame(root, root,
     #                    fig_size=(9, 4),
-    #                    ylim=[0.1, 100],
-    #                    use_log=True)
-    # plot.update([0, .1], [1, -5])
+    #                    ylim=[0, 16000],
+    #                    hlines=[3500, 5000, 8000, 10000])
+    plot = PyPlotFrame(root, root,
+                       fig_size=(9, 4),
+                       ylim=[0.1, 100],
+                       use_log=True)
+    plot.update([datetime(2023, 2, 24, 0, 1, 51),
+                 datetime(2023, 2, 24, 0, 4, 51)], [1, -5])
     plot.pack()
     root.mainloop()

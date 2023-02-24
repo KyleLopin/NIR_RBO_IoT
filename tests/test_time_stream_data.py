@@ -327,13 +327,13 @@ class TestLoadData(unittest.TestCase):
                         return_value=True) as mocked_gui:
             cls.tsd = data_class.TimeStreamData(mocked_gui)
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Delete the mocked data file that should have been sorted
-        """
-        if os.path.exists(SAVED_FILE_PATH):
-            os.remove(SAVED_FILE_PATH)
+    # @classmethod
+    # def tearDownClass(cls) -> None:
+    #     """
+    #     Delete the mocked data file that should have been sorted
+    #     """
+    #     if os.path.exists(SAVED_FILE_PATH):
+    #         os.remove(SAVED_FILE_PATH)
 
     def test_load_file(self):
         """
