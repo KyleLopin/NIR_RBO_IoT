@@ -24,7 +24,7 @@ import numpy as np
 # local files
 import global_params
 # plt.style.use("seaborn")
-plt.style.use("seaborn-v0_8")
+plt.style.use("seaborn")
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
