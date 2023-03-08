@@ -17,7 +17,8 @@ sys.path.append(os.path.join('..', 'GUI'))
 # local files
 from GUI import data_class
 
-DATA_POS2_1 = {'time': '09:55:22', 'date': '2022-11-18', 'packet_id': 1, 'device': 'position 2', 'mode': 'live', 'OryConc': -20139, 'CPUTemp': '48.31', 'SensorTemp': 0, 'AV': -1}
+DATA_POS2_1 = {'time': '09:55:22', 'date': '2022-11-18', 'packet_id': 1, 'device': 'position 2',
+               'mode': 'live', 'OryConc': -20139, 'CPUTemp': '48.31', 'SensorTemp': 0, 'AV': -1}
 
 
 class TestAddDataPkt(unittest.TestCase):
