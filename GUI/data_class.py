@@ -117,7 +117,8 @@ def convert_csv_row_to_packet(csv_row):
     try:  # this will be a ' ' if there is no AV key
         pkt['AV'] = float(csv_row[indices['AV']])
     except:
-        pkt['AV'] = None
+        pass
+        # pkt['AV'] = None
     return pkt
 
 
