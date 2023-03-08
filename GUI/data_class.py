@@ -541,7 +541,7 @@ class TimeStreamData:
             self.save_data(data_pkt)
             self.root_app.info.check_in(position)
             # self.master_graph.update_temp(device, temp, "CPU")
-            self.root_app.info.update_temp(data_pkt, position)
+            self.root_app.info.update_current_info(data_pkt, position)
         return 0
 
     def update_rolling_samples(self, n_samples):

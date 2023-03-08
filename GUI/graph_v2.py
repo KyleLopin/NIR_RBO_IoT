@@ -176,7 +176,7 @@ class PyPlotFrame(tk.Frame):
 
         # print(f"check1 {self.zoomed}, {label}")
         if not self.zoomed and label != "blank":
-            # print("relim axis", self.ylim)
+            print("relim axis", self.ylim)
             self.axis.relim()
             self.axis.autoscale()
             if self.ylim:
@@ -185,7 +185,7 @@ class PyPlotFrame(tk.Frame):
             # tick_skips = len(x) // 6
             # print(f"tick skips: {tick_skips}")
             # self.axis.set_xticks(self.axis.get_xticks()[::tick_skips])
-        # print("Updata in graph_v2; drawing")
+        print("Updata in graph_v2; drawing")
         self.canvas.draw()
 
     def rolling_avg(self, _list):

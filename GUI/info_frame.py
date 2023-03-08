@@ -27,17 +27,17 @@ class InfoFrame(tk.Frame):
         tk.Frame.__init__(self, master=root)
         self.root_app = root
         self.sensor_frames = dict()
-        self.temp_frames = dict()
+        self.current_read_frames = dict()
         for position in positions:
             _frame = tk.Frame(self, relief=tk.GROOVE, bd=3)
+
+            current_read_frame = CurrentReadFrame(_frame, position)
+            current_read_frame.pack(side=tk.LEFT)
+            self.current_read_frames[position] = current_read_frame
 
             sensor_frame = SensorInfoFrame(_frame, root, position)
             sensor_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
             self.sensor_frames[position] = sensor_frame
-
-            temp_frame = TempFrame(_frame, position)
-            temp_frame.pack(side=tk.LEFT)
-            self.temp_frames[position] = temp_frame
 
             _frame.pack(side=tk.LEFT)
 
@@ -51,15 +51,25 @@ class InfoFrame(tk.Frame):
     def position_online(self, device, is_running):
         self.sensor_frames[device].position_online(is_running)
 
-    def update_temp(self, data_pkt, position):
+    def update_current_info(self, data_pkt, position):
         sensor_temp = "missing"
         cpu_temp = "missing"
+        av = ""
+        ory = ""
+        date = ""
         if "SensorTemp" in data_pkt:
             sensor_temp = data_pkt["SensorTemp"]
         if "CPUTemp" in data_pkt:
             cpu_temp = data_pkt["CPUTemp"]
-        self.temp_frames[position].update_temp(cpu_temp,
-                                             sensor_temp)
+        if "AV" in data_pkt and data_pkt["AV"] is not None:
+            av = data_pkt["AV"]
+        if "OryConc" in data_pkt:
+            ory = data_pkt["OryConc"]
+        self.current_read_frames[position].update_current_info(cpu_temp,
+                                                               sensor_temp,
+                                                               av, ory,
+                                                               data_pkt["date"],
+                                                               data_pkt["time"])
 
 
 class SensorInfoFrame(tk.Frame):
@@ -150,9 +160,24 @@ class SensorInfoFrame(tk.Frame):
             self.master.after_cancel(self.loop)
 
 
-class TempFrame(tk.Frame):
+class CurrentReadFrame(tk.Frame):
     def __init__(self, parent: tk.Frame, _pos: str):
         tk.Frame.__init__(self, master=parent, bg="white")
+        self.date_label = tk.Label(self, text="Read date: ",
+                                   bg="white")
+        self.date_label.pack(side=tk.TOP)
+        self.time_label = tk.Label(self, text="Read time: ",
+                                   bg="white")
+        self.time_label.pack(side=tk.TOP)
+
+        self.av_label = tk.Label(self, text="AV: ",
+                                 bg="antique white")
+        self.av_label.pack(side=tk.TOP, fill=tk.X)
+
+        self.ory_label = tk.Label(self, text='Oryzanol: ',
+                                  bg="blanched almond")
+        self.ory_label.pack(side=tk.TOP, fill=tk.X)
+
         tk.Label(self, text=f"{_pos} temperature:",
                  bg="white").pack()
         self.cpu_temp_label = tk.Label(self, bg="white",
@@ -162,9 +187,15 @@ class TempFrame(tk.Frame):
                                           text="No Temp read")
         self.sensor_temp_label.pack(side=tk.TOP)
 
-    def update_temp(self, cpu=None, sensor=None):
+    def update_current_info(self, cpu=None, sensor=None,
+                            av=None, ory_conc=None,
+                            date=None, time=None):
         self._update_temp(cpu, self.cpu_temp_label, "CPU")
         self._update_temp(sensor, self.sensor_temp_label, "Sensor")
+        self.date_label.config(text=f"Read date: {date}")
+        self.time_label.config(text=f"Read time: {time}")
+        self.av_label.config(text=f"AV: {av}")
+        self.ory_label.config(text=f"Oryzanol: {ory_conc}")
 
     def _update_temp(self, _temp, _label: tk.Label, sensor: str):
         temp = float(_temp)  # incase its a string
