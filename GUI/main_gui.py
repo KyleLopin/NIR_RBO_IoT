@@ -12,7 +12,7 @@ import json
 import logging
 import os
 import sys
-import tkinter as tk
+from tkinter import Tk, TOP, BOTH, BOTTOM, filedialog
 
 # local files
 import connection
@@ -58,9 +58,9 @@ MOCK_DATA = False
 # os.system("xterm -hold -e 'mosquitto -v'")
 
 
-class RBOGUI(tk.Tk):
+class RBOGUI(Tk):
     def __init__(self, parent=None):
-        tk.Tk.__init__(self, parent)
+        Tk.__init__(self, parent)
         self.today = datetime.today().strftime("%Y-%m-%d")
         self.graphs = notebook.Notebook(self)
         self.graphs.pack(expand=True)
@@ -69,9 +69,9 @@ class RBOGUI(tk.Tk):
 
         # check what time stamps for each device_number we have received
         self.check_previous_data()
-        self.graphs.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+        self.graphs.pack(side=TOP, expand=True, fill=BOTH)
         self.info = info_frame.InfoFrame(self, POSITIONS)
-        self.info.pack(side=tk.BOTTOM)
+        self.info.pack(side=BOTTOM)
         # self.status_frame = graph.StatusFrame(self)
         # self.status_frame.pack(side=tk.BOTTOM)
         self.mqtt_broker_checkin = 0
@@ -169,7 +169,7 @@ class RBOGUI(tk.Tk):
 
     def save_data(self, data_type, device):
         print(f"saving data |{data_type}| for device_number: {device}")
-        _file = tk.filedialog.asksaveasfile(mode='w', defaultextension=".csv")
+        _file = filedialog.asksaveasfile(mode='w', defaultextension=".csv")
         if _file is None:  # asksaveasfile return `None` if dialog closed with "cancel".
             return
         position = global_params.DEVICES[device]
