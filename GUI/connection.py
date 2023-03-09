@@ -16,7 +16,7 @@ import tkinter as tk
 
 # installed libraries
 import paho.mqtt.client as mqtt
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 # local files
 import check_saved_data
@@ -37,8 +37,10 @@ MQTT_LOCALHOST = "localhost"
 MQTT_SERVER = "MQTTBroker.local"
 MQTT_PATH_LISTEN = "device/+/data"
 MQTT_STATUS_CHANNEL = "device/+/status"
+dotenv_path = find_dotenv(usecwd=True)
+print(f"dot env path: {dotenv_path}")
 # Credentials
-load_dotenv('.env')
+load_dotenv()
 MQTT_USERNAME = os.getenv('HIVEMQTT_USERNAME')
 MQTT_PASSWORD = os.getenv('HIVEMQTT_PASSWORD')
 MQTT_NAME = os.getenv('MQTT_NAME')
@@ -423,6 +425,7 @@ class BaseConnectionClass:
         self.publish(device_topic, payload, qos=0)
 
     def connect(self):
+        print("base connection")
         # print(f"name: {os.name}")
         if os.name == "posix":
             # raspberry pi which should be running the
@@ -502,6 +505,9 @@ class HIVEMQConnection(BaseConnectionClass):
             print(f"HIVEMQ mqtt result: {result}")
         except Exception as e:
             print(f"HIVEMQ connection error: {e}")
+            print(f"URL: {HIVEMQTT_SERVER}")
+            print(HIVEMQTT_USERNAME)
+            print(HIVEMQTT_PASSWORD)
         print("end trying to connect to HIVEMQ Server")
 
     # def _on_connection(self, client, userdata, flags, rc):
