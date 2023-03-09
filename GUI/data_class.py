@@ -575,9 +575,11 @@ class TimeStreamData:
         # make a string of the data and write it
         data_list = []
 
-        # print(f"saving packet: {data_pkt}")
+        date = dt.datetime.strptime(data_pkt["date"], "%Y-%m-%d")
+        time = dt.datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
+
+        data_pkt["time"] = dt.datetime.combine(date, time)
         for item in FILE_HEADER_TO_SAVE:
-            # print(f"item: {item}")
             if item in data_pkt:
                 if type(data_pkt[item]) is float:
                     data_list.append(f"{data_pkt[item]:.1f}")
