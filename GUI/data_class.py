@@ -511,7 +511,7 @@ class TimeStreamData:
                 # old data was received, just ignore it rather than figure out if its needed
                 print(f"packet data: {packet_date}, current date: {current_date}")
                 return 201  # testing unit code
-        # print(f"Tracking models1: {self.models.keys()}")
+        # add the date to the individual sensor data class
         data_pkt = device_data.add_data_pkt(data_pkt, self.models)
         # device_data.resize_data()
         if not data_pkt:
@@ -540,7 +540,8 @@ class TimeStreamData:
             print(f"saving data: {data_pkt['packet_id']}")
             self.save_data(data_pkt)
             self.root_app.info.check_in(position)
-            # self.master_graph.update_temp(device, temp, "CPU")
+            # only update the info frame if the is newer data than
+            # the data saved
             self.root_app.info.update_current_info(data_pkt, position)
         return 0
 

@@ -162,7 +162,8 @@ class SensorInfoFrame(tk.Frame):
 
 class CurrentReadFrame(tk.Frame):
     def __init__(self, parent: tk.Frame, _pos: str):
-        tk.Frame.__init__(self, master=parent, bg="white")
+        tk.Frame.__init__(self, master=parent, bg="white",
+                          width=300)
         self.date_label = tk.Label(self, text="Read date: ",
                                    bg="white")
         self.date_label.pack(side=tk.TOP)
@@ -171,11 +172,13 @@ class CurrentReadFrame(tk.Frame):
         self.time_label.pack(side=tk.TOP)
 
         self.av_label = tk.Label(self, text="AV: ",
-                                 bg="antique white")
+                                 bg="antique white",
+                                 font=("FreeSans", 24))
         self.av_label.pack(side=tk.TOP, fill=tk.X)
 
         self.ory_label = tk.Label(self, text='Oryzanol: ',
-                                  bg="blanched almond")
+                                  bg="blanched almond",
+                                  font=("FreeSans", 24))
         self.ory_label.pack(side=tk.TOP, fill=tk.X)
 
         tk.Label(self, text=f"{_pos} temperature:",
@@ -194,8 +197,14 @@ class CurrentReadFrame(tk.Frame):
         self._update_temp(sensor, self.sensor_temp_label, "Sensor")
         self.date_label.config(text=f"Read date: {date}")
         self.time_label.config(text=f"Read time: {time}")
-        self.av_label.config(text=f"AV: {av}")
-        self.ory_label.config(text=f"Oryzanol: {ory_conc}")
+        try:
+            self.av_label.config(text=f"AV: {float(av):.1f}")
+        except:
+            pass
+        try:
+            self.ory_label.config(text=f"Oryzanol: {round(float(ory_conc), -2):.0f}")
+        except:
+            pass
 
     def _update_temp(self, _temp, _label: tk.Label, sensor: str):
         temp = float(_temp)  # incase its a string
