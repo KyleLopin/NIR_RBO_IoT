@@ -16,7 +16,7 @@ import tkinter as tk
 
 # installed libraries
 import paho.mqtt.client as mqtt
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 # local files
 import check_saved_data
@@ -37,6 +37,8 @@ MQTT_LOCALHOST = "localhost"
 MQTT_SERVER = "MQTTBroker.local"
 MQTT_PATH_LISTEN = "device/+/data"
 MQTT_STATUS_CHANNEL = "device/+/status"
+dotenv_path = find_dotenv(usecwd=True)
+print(f"dot env path: {dotenv_path}")
 # Credentials
 load_dotenv()
 MQTT_USERNAME = os.getenv('HIVEMQTT_USERNAME')
