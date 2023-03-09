@@ -423,6 +423,7 @@ class BaseConnectionClass:
         self.publish(device_topic, payload, qos=0)
 
     def connect(self):
+        print("base connection")
         # print(f"name: {os.name}")
         if os.name == "posix":
             # raspberry pi which should be running the
