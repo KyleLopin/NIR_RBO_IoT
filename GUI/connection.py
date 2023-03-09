@@ -504,6 +504,8 @@ class HIVEMQConnection(BaseConnectionClass):
         except Exception as e:
             print(f"HIVEMQ connection error: {e}")
             print(f"URL: {HIVEMQTT_SERVER}")
+            print(HIVEMQTT_USERNAME)
+            print(HIVEMQTT_PASSWORD)
         print("end trying to connect to HIVEMQ Server")
 
     # def _on_connection(self, client, userdata, flags, rc):
