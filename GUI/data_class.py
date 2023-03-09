@@ -230,8 +230,9 @@ class DeviceData:
         for i in range(len(self.packet_ids)):
             # make row to write
             # print(i)
+            print(self.time_series)
             if len(self.av) > 0:
-                row = [self.time_series[i].strftime("%H:%M:%S"),
+                row = [self.time_series[i],
                        position, self.oryzanol[i],
                        self.av[i], self.cpu_temp[i],
                        self.sensor_temp[i], self.packet_ids[i]]
@@ -307,8 +308,11 @@ class DeviceData:
             self.sensor_temp.insert(insert_idx, np.nan)
 
         self.packet_ids.insert(insert_idx, int(data_pkt["packet_id"]))
-        time = dt.datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
-        time = dt.datetime.combine(self.today, time)
+        if len(data_pkt["time"]) <= 8:
+            time = dt.datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
+            time = dt.datetime.combine(self.today, time)
+        else:
+            time = data_pkt["time"]
         self.time_series.insert(insert_idx, time)
         self.oryzanol.insert(insert_idx, float(data_pkt["OryConc"]))
         self.ory_rolling = self.rolling_avg(self.oryzanol)

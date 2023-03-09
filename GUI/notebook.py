@@ -113,8 +113,8 @@ class Notebook(tk.Frame):
                              label=_position)
 
     def update_av(self, time, av, device):
-        print("update av")
-        print(time, av)
+        # print("update av")
+        # print(time, av)
         self.av_plot.update(time, av,
                             label=device)
 
