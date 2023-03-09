@@ -470,7 +470,7 @@ class TimeStreamData:
         """ Add data from a csv row, this will be saved data """
         # position = csv_row[indices["position"]].strip()
         data_pkt = convert_csv_row_to_packet(csv_row)
-        print(f"adding data_pkt: {data_pkt}")
+        # print(f"adding data_pkt: {data_pkt}")
         position = data_pkt["position"]
         # print(f"adding csv data for position: {position}")
         if position:
