@@ -260,7 +260,7 @@ class DeviceData:
         self.lost_pkt_ptr = None  # use this to find missing pkts
 
     def add_data_pkt(self, data_pkt, models):
-        print(f"add data pkt: {data_pkt}")
+        # print(f"add data pkt: {data_pkt}")
         # print(f"cwd data_class: {os.getcwd()}")
         insert_idx = self.check_pkt_id_get_insert_idx(data_pkt)
         # print(f"insert index: {insert_idx}")
@@ -427,7 +427,7 @@ class TimeStreamData:
             for row in csv_reader:
                 # print(f"line count: {line_count}, len row: {len(row)}")
                 if line_count != 0 and len(row) >= 7:
-                    print(f"load row: {row}")
+                    # print(f"load row: {row}")
                     self.add_csv_data(row)
                 line_count += 1
 
