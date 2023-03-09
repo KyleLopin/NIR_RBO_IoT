@@ -38,7 +38,7 @@ MQTT_SERVER = "MQTTBroker.local"
 MQTT_PATH_LISTEN = "device/+/data"
 MQTT_STATUS_CHANNEL = "device/+/status"
 # Credentials
-load_dotenv('.env')
+load_dotenv()
 MQTT_USERNAME = os.getenv('HIVEMQTT_USERNAME')
 MQTT_PASSWORD = os.getenv('HIVEMQTT_PASSWORD')
 MQTT_NAME = os.getenv('MQTT_NAME')
