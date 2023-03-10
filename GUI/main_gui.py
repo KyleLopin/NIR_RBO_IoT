@@ -182,19 +182,13 @@ class RBOGUI(Tk):
             data_set = [device_data.cpu_temp,
                         device_data.sensor_temp]
             _file.write(f"time, CPU Temp at {device}, Sensor Temp at {device}\n")
-        #         print(device_data.time_series)
         times = device_data.time_series
-        #         print(device_data.time_series)
-        times = [i.strftime('%H:%M:%S') for i in device_data.time_series]
+        # times = [i.strftime('%H:%M:%S') for i in device_data.time_series]
         for i, time in enumerate(times):
             line_items = [time]
-            print(data_set)
             for item in data_set:
-                #                 print(item)
                 line_items.append(str(item[i]))
-            #             print(line_items)
             line = ",".join(line_items)
-            #             print(line)
             _file.write(line + '\n')
 
     def change_scan_params(self, device, packet):

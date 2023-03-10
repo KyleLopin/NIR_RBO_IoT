@@ -206,6 +206,7 @@ class TestAddDataPacket(unittest.TestCase):
         if os.path.exists(SAVED_FILE_PATH):
             os.remove(SAVED_FILE_PATH)
 
+    @freezegun.freeze_time(TEST_DATE)  # for testing 1 method
     def test_add_data_pkt(self):
         """
         Test that when calling the data_class.TimeStreamData method of
@@ -224,12 +225,13 @@ class TestAddDataPacket(unittest.TestCase):
                              [dt.datetime(2022, 11, 18, 9, 55, 22)],
                              msg="add_data is not saving a single time_series "
                                  "correctly")
+        print(f"time series: {device_data.time_series}")
         self.assertListEqual(device_data.av, [-1.0])
         self.assertListEqual(device_data.oryzanol, [-20139.0],
                              msg="add_data is not saving a single oryzanol correctly")
         self.assertEqual(get_data_file(),
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                         "09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n",
+                         "2022-11-18 09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n",
                          msg=f"Saved data file is not right for test_add_data_pkt")
 
     def test_add_2_pkts(self):

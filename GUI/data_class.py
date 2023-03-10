@@ -109,8 +109,15 @@ def convert_csv_row_to_packet(csv_row):
     pkt = {}
     if isint(csv_row[indices["packet_id"]]):
         pkt["packet_id"] = int(csv_row[indices["packet_id"]])
-    for obj in ["time", "position"]:
-        pkt[obj] = csv_row[indices[obj]].strip()
+    # for obj in ["time", "position"]:
+    #     pkt[obj] = csv_row[indices[obj]].strip()
+    pkt["position"] = csv_row[indices["position"]].strip()
+    # for time strip the date from it, split at the space between
+    # the data and time and take the time at the end
+    pkt["time"] = csv_row[indices["time"]].split(" ")[1].strip()
+    # print(csv_row)
+    # print(csv_row[indices["time"]].split(" "))
+    # print(f"load csv row: {pkt}")
     for obj in ["CPUTemp", "SensorTemp", "OryConc"]:
         if isfloat(csv_row[indices[obj]]):
             pkt[obj] = float(csv_row[indices[obj]])
@@ -151,17 +158,14 @@ class DataPacket:
                 self.cpu_temp = packet["CPUTemp"]
             if "SensorTemp" in packet:
                 self.sensor_temp = packet["SensorTemp"]
-            print(f"packet made1")
         elif packet_id is not None:  # can be 0 and legit
             self.time = time
             self.device = device
             self.packet_id = packet_id
             # the rest are assigned above
             self.make_packet()
-            print(f"packet made2")
         elif data_line:
             self.parse_line(data_line)
-            print(f"packet made3")
         else:
             raise Exception("Wrong input to DataClass")
 
@@ -174,14 +178,11 @@ class DataPacket:
                        "AV": self.av,
                        "CPUTemp": self.cpu_temp,
                        "SensorTemp": self.sensor_temp}
-        print(f"packet111: {self.packet}")
         # this packet is send through json so truncate the raw data floats
         # TODO: is this worth it?
 
     def parse_line(self, csv_line):
-        print(f"parsing line {csv_line}")
         split_line = csv_line.split(",")
-        print(f"line split: {split_line}")
         self.packet_id = int(split_line[indices["packet_id"]])
         self.time = split_line[indices["time"]].lstrip()
         self.device = split_line[indices["device"]]
@@ -215,7 +216,6 @@ class DeviceData:
         self.av_rolling = []
 
         self.today = dt.datetime.today().date()
-        # print(f"making today: {self.today}")
         self.rolling_samples = rolling_samples
         self.ask_for_missing_packets = False
         self.last_packet_id = -1
@@ -229,15 +229,13 @@ class DeviceData:
         # print(f"save position summary data")
         for i in range(len(self.packet_ids)):
             # make row to write
-            # print(i)
-            print(self.time_series)
             if len(self.av) > 0:
                 row = [self.time_series[i],
                        position, self.oryzanol[i],
                        self.av[i], self.cpu_temp[i],
                        self.sensor_temp[i], self.packet_ids[i]]
             else:
-                row = [self.time_series[i].strftime("%H:%M:%S"),
+                row = [self.time_series[i],
                        position, self.oryzanol[i],
                        '', self.cpu_temp[i],
                        self.sensor_temp[i], self.packet_ids[i]]
@@ -308,6 +306,7 @@ class DeviceData:
             self.sensor_temp.insert(insert_idx, np.nan)
 
         self.packet_ids.insert(insert_idx, int(data_pkt["packet_id"]))
+
         if len(data_pkt["time"]) <= 8:
             time = dt.datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
             time = dt.datetime.combine(self.today, time)
@@ -474,7 +473,6 @@ class TimeStreamData:
         position = data_pkt["position"]
         # print(f"adding csv data for position: {position}")
         if position:
-
             if position in POSITIONS and position not in self.positions:
                 self.add_device(position)
             device_data = self.positions[position]
@@ -566,13 +564,10 @@ class TimeStreamData:
         self.update_after = None
 
     def find_next_missing_pkts(self, device_data, last_pkt_id):
-        # print(f"finding missing packet: {device_data.packet_ids}, {len(device_data.packet_ids)}")
         missing_pkts = []
         for i in range(last_pkt_id):
-            # print(f"i = {i}")
             if i not in device_data.packet_ids:
                 missing_pkts.append(i)
-            # print(missing_pkts)
         return missing_pkts
 
     def save_data(self, data_pkt):
@@ -609,64 +604,14 @@ class TimeStreamData:
                     data_list2.append(", ")
             if "Raw_data" in data_pkt:
                 data_list2.extend([str(i) for i in data_pkt["Raw_data"]])
-                # print("WRITING RAW data")
                 with open(self.save_raw_data_file, 'a') as _file:
                     _file.write(', '.join(data_list2))
-                    # print("last data list item", data_list2[-1])
                     if "\n" not in data_list2[-1]:
                         _file.write("\n")
-
-    # def check_missing_packets_depr(self, device, pkts_sent):
-    #     log_deprecation_violation("check_missing_packets_depr used")
-    #     # look for missing packets
-    #     print("time: ", dt.datetime.now().strftime("%H:%M:%S"))
-    #     print(f"looking for missing packets for {device}")
-    #     device_data = self.positions[device]
-    #     print(f"device packets: {len(device_data.packet_ids)}, {device_data.packet_ids}")
-    #     if len(device_data.packet_ids) != 0:
-    #         missing_pkt = self.find_next_missing_pkts(self.positions[device], pkts_sent)
-    #     else:  # first connected, ask for data up till now
-    #         missing_pkt = [i for i in range(pkts_sent)]
-    #     print(f"going to ask for packets: {self.already_asked_for_data}")
-    #     if missing_pkt and not self.already_asked_for_data:
-    #         print(f"ask for packet: {missing_pkt}")
-    #         self.already_asked_for_data = True  # set message_id to not repeat ask
-    #         print(f"already asked for data: {self.already_asked_for_data}")
-    #         self.root_app.after(5*60000, self.clear_ask_for_data_flag)  # wait 10 mins and clear the message_id
-    #         self.connection.ask_for_stored_data(device, missing_pkt)
 
     def clear_ask_for_data_flag(self):
         self.already_asked_for_data = False
         print(f"cleared asked for data: {self.already_asked_for_data}")
-
-    # def get_missing_packets_deprecated(self, device):
-    #     log_deprecation_violation("get_missing_packets_deprecated used")
-    #
-    #     print(f"updating packets with remote data: {device}")
-    #     missing_ids = []
-    #     device_data = self.positions[device]
-    #     for i in range(1, device_data.latest_packet_id + 1):
-    #         print(f"comparing {i} in {device_data.packet_ids} or {device_data.stored_packets}")
-    #         if i not in device_data.packet_ids:
-    #             if i not in device_data.stored_packets:
-    #                 missing_ids.append(i)
-    #     return missing_ids
-    #     # self.check_prev_reads(device, self.devices[device].latest_packet_id)
-
-    # def check_prev_reads_dep(self, device, num_packets):
-    #     log_deprecation_violation("check_prev_reads_dep used")
-    #     print(f"Updating packets for {num_packets} packets")
-    #     # print(f"{self.devices}")
-    #     # print(f"for device: {device}")
-    #     # print(f"we have packets: {self.devices[device].packet_ids}")
-    #
-    #     for i in range(1, num_packets + 1):
-    #         # print(f"Comparing {i} in {self.devices[device].packet_ids}")
-    #         # print(f"{type(i)} {type(self.devices[device].packet_ids)} {type(self.devices[device].packet_ids[0])}")
-    #         if i in self.positions[device].packet_ids:
-    #             print(f"We already have packet: {i}")
-    #         else:
-    #             print(f"getting packet: {i}")
 
     def update_latest_packet_id(self, device, pkt_num):
         # this is the first method to see the device so add it to devices
@@ -688,8 +633,6 @@ class TimeStreamData:
         time = dt.datetime.strptime(data_pkt[TIME_KEYWORD], "%H:%M:%S").time()
         today = dt.date.today()
         full_time = dt.datetime.combine(today, time)
-        print(time)
-        print(type(data_pkt["Info"][CPUTEMP_KEYWORD]))
         self.positions[device].add_data_pt(full_time,
                                            float(data_pkt["Info"][CPUTEMP_KEYWORD]),
                                            float(data_pkt["Info"][ORYZONAL_KEYWORD]))
@@ -705,12 +648,10 @@ class TimeStreamData:
         Returns:
 
         """
-        # print(f"making file with header: {header}")
         try:
             with open(filepath, 'x') as _file:
                 # use 'x' to try to make the file, if it exists
                 # it will raise an error and just pass
-                # print(f"header: {header}")
                 _file.write(', '.join(header))
                 _file.write('\n')
         except Exception as error:

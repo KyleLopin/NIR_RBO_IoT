@@ -132,8 +132,8 @@ class Notebook(tk.Frame):
             print("Error in lent of sensor temp mask")
             print(f"len time {len(np.array(time)[sensor_mask.mask])}"
                   f" len temp {len(np.array(sensor_temp)[sensor_mask.mask])}")
-            print(np.array(time)[sensor_mask.mask])
-            print(np.array(sensor_temp)[sensor_mask.mask])
+            # print(np.array(time)[sensor_mask.mask])
+            # print(np.array(sensor_temp)[sensor_mask.mask])
         self.temp_plot.update(np.array(time)[sensor_mask.mask],
                               np.array(sensor_temp)[sensor_mask.mask],
                               label=f"Sensor {_position}",
