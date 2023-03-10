@@ -266,7 +266,7 @@ class DeviceData:
             return None  # no pkt id, or one already received
         # print(f"sort idx: {insert_idx}, len packet id: {len(self.packet_ids)}")
         if "AV" in data_pkt :
-            print(f"inserting AV: {data_pkt['AV']}")
+            # print(f"inserting AV: {data_pkt['AV']}")
             self.av.insert(insert_idx, float(data_pkt["AV"]))
             # print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
         elif self.use_av:
