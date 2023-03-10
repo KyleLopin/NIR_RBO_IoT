@@ -45,7 +45,7 @@ class Models:
         with open(os.path.join(__location__, MODEL_FILE), "r") as _file:
             json_data = json.load(_file)
         # print("model data")
-        print(json_data)
+        # print(json_data)
         self.models = dict()
         for device in devices:
             # print(f"making model for device: {device}")
