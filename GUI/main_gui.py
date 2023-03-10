@@ -80,7 +80,7 @@ class RBOGUI(Tk):
             self.connection2 = mock_conn.MockConn(self, data=self.data,
                                                   name="position 3", rate=50)
         else:
-            print(f"root dir {dir(self)}")
+            # print(f"root dir {dir(self)}")
             self.connection = connection.ConnectionClass(self, self.data)
         self.data.add_connection(self.connection)
         self.info.add_connection(self.connection)
