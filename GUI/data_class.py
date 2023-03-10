@@ -424,9 +424,9 @@ class TimeStreamData:
             csv_reader = csv.reader(csv_file, delimiter=',')
             line_count = 0
             for row in csv_reader:
-                # print(f"line count: {line_count}, len row: {len(row)}")
+                print(f"line count: {line_count}, len row: {len(row)}")
                 if line_count != 0 and len(row) >= 7:
-                    # print(f"load row: {row}")
+                    print(f"load row: {row}")
                     self.add_csv_data(row)
                 line_count += 1
 
@@ -477,6 +477,7 @@ class TimeStreamData:
                 self.add_device(position)
             device_data = self.positions[position]
             device_data.add_data_pkt(data_pkt, self.models)
+            print(f"len: {len(device_data.time_series)}")
 
     def add_data(self, data_pkt: dict, save_data_pkt=True):
         # TODO: fix this, its a mess
