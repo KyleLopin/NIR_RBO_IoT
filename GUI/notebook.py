@@ -127,6 +127,9 @@ class Notebook(tk.Frame):
                               show_mean=False)
         # print(sensor_mask)
         # print(np.array(time)[sensor_mask.mask])
+        print(f"time: {type(time)}")
+        print(f"temp: {type(sensor_temp)}")
+        print(f"mask: {type(sensor_mask.mask)}")
         if len(time) != len(sensor_mask.mask) or \
                 len(sensor_temp) != len(sensor_mask.mask):
             print("Error in lent of sensor temp mask")

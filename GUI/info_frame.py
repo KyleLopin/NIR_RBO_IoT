@@ -69,7 +69,7 @@ class InfoFrame(tk.Frame):
                                                                sensor_temp,
                                                                av, ory,
                                                                data_pkt["date"],
-                                                               data_pkt["time"])
+                                                               data_pkt["time"].time().strftime('%H:%M:%S'))
 
 
 class SensorInfoFrame(tk.Frame):
@@ -196,6 +196,7 @@ class CurrentReadFrame(tk.Frame):
         self._update_temp(cpu, self.cpu_temp_label, "CPU")
         self._update_temp(sensor, self.sensor_temp_label, "Sensor")
         self.date_label.config(text=f"Read date: {date}")
+
         self.time_label.config(text=f"Read time: {time}")
         try:
             self.av_label.config(text=f"AV: {float(av):.1f}")
