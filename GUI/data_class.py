@@ -424,9 +424,9 @@ class TimeStreamData:
             csv_reader = csv.reader(csv_file, delimiter=',')
             line_count = 0
             for row in csv_reader:
-                print(f"line count: {line_count}, len row: {len(row)}")
+                # print(f"line count: {line_count}, len row: {len(row)}")
                 if line_count != 0 and len(row) >= 7:
-                    print(f"load row: {row}")
+                    # print(f"load row: {row}")
                     self.add_csv_data(row)
                 line_count += 1
 
