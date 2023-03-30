@@ -561,7 +561,7 @@ class TimeStreamData:
     def update_graph(self, position):
         print(f"Updating graph for position: {position}")
         device_data = self.positions[position]  # type: DeviceData
-        self.master_graph.update(position, device_data)
+        self.master_graph.update_notebook(position, device_data)
         self.update_after = None
 
     def find_next_missing_pkts(self, device_data, last_pkt_id):

@@ -4,7 +4,7 @@
 
 """
 
-__author__ = "Kyle Vitautus Lopin"
+__author__ = "Kyle Vitautas Lopin"
 
 # standard libraries
 import json
@@ -115,8 +115,8 @@ class Notebook(tk.Frame):
     def update_av(self, time, av, device):
         # print("update av")
         # print(time, av)
-        self.av_plot.update(time, av,
-                            label=device)
+        self.av_plot.update_graph(time, av,
+                                  label=device)
 
     def update_temp(self, time, cpu_temp,
                     sensor_temp, _position):

@@ -5,7 +5,7 @@ Version 2 of the graph programs to display
 IoT sensor data
 """
 
-__author__ = "Kyle Vitautus Lopin"
+__author__ = "Kyle Vitautas Lopin"
 
 # standard libraries
 from datetime import datetime, timedelta
@@ -170,7 +170,7 @@ class PyPlotFrame(tk.Frame):
 
         # print(f"check1 {self.zoomed}, {label}")
         if not self.zoomed and label != "blank":
-            print("re limit axis", self.ylim)
+            print("re-limit axis", self.ylim)
             self.axis.relim()
             self.axis.autoscale()
             if self.ylim:
