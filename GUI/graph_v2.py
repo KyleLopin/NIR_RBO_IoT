@@ -5,7 +5,7 @@ Version 2 of the graph programs to display
 IoT sensor data
 """
 
-__author__ = "Kyle Vitatus Lopin"
+__author__ = "Kyle Vitautas Lopin"
 
 # standard libraries
 from datetime import datetime, timedelta
@@ -58,13 +58,12 @@ ROLL_ALPHA = 1.0
 LINE_ALPHA = 0.2
 
 
-
 class PyPlotFrame(tk.Frame):
     def __init__(self, parent, root_app: tk.Tk,
                  fig_size=(3, 3), xlabel=None,
                  ylabel=None, xlim=None,
                  ylim=None, allow_zoom=False,
-                 hlines: list=None,
+                 hlines: list = None,
                  use_log=False):
         tk.Frame.__init__(self, master=parent)
         self.root_app = root_app
@@ -111,9 +110,6 @@ class PyPlotFrame(tk.Frame):
         self.rect = None
         self.zoom_coords = []
         self.zoomed = False
-        if allow_zoom:
-            self.canvas.mpl_connect("button_press_event", self._button_press)
-            self.canvas.mpl_connect("button_release_event", self._on_release)
 
         if hlines:
             for i, hline in enumerate(hlines):
@@ -135,7 +131,7 @@ class PyPlotFrame(tk.Frame):
         """
         # print(f"update: {label}, {len(y)}, {len(x)}")
         # print(f"update lines: {self.lines}")
-        # print(f"updatex: {x}")
+        # print(f"update x: {x}")
         if len(y) != len(x):
             print(f"error in {label} data, len s: {len(x)}, {len(y)}")
             return
@@ -176,7 +172,7 @@ class PyPlotFrame(tk.Frame):
 
         # print(f"check1 {self.zoomed}, {label}")
         if not self.zoomed and label != "blank":
-            print("relim axis", self.ylim)
+            print("re-limit axis", self.ylim)
             self.axis.relim()
             self.axis.autoscale()
             if self.ylim:
@@ -185,7 +181,7 @@ class PyPlotFrame(tk.Frame):
             # tick_skips = len(x) // 6
             # print(f"tick skips: {tick_skips}")
             # self.axis.set_xticks(self.axis.get_xticks()[::tick_skips])
-        print("Updata in graph_v2; drawing")
+        print("Update in graph_v2; drawing")
         self.canvas.draw()
 
     def rolling_avg(self, _list):
@@ -198,102 +194,6 @@ class PyPlotFrame(tk.Frame):
                 avg = sum(_list[:i]) / i
             _rolling_avg.append(avg)
         return _rolling_avg
-
-    def _on_release(self, event):
-        print(f"release: {event}")
-        if not self.zoom_coords:
-            print("releasing double click or off graph first click")
-            return  # this is the release from double button press
-
-        if event.xdata: # on graph
-            end_time = mdates.num2date(event.xdata)
-        elif self.rect:
-            # the release is off the graph
-            if event.x < 250:  # released off left side of graph
-                self.axis.set_xlim(right=self.zoom_coords[0])
-            elif event.x > 750:  # released off right side of graph
-                self.axis.set_xlim(left=self.zoom_coords[0])
-            else: # middle of x axis
-                # set the y lim only
-                pass  # doesn't work
-                # if self.zoom_coords[1] > event.ydata:
-                #     self.axis.set_ylim([event.ydata, self.zoom_coords[1]])
-                # else:
-                #     self.axis.set_ylim([self.zoom_coords[1], event.ydata])
-            if event.y < 150:  # released off bottom
-                self.axis.set_ylim(top=self.zoom_coords[1])
-            elif event.y > 250:
-                self.axis.set_ylim(bottom=self.zoom_coords[1])
-            self.rect.remove()
-            self.rect = None
-            self.zoomed = True
-
-        if self.rect and event.xdata:
-            self.rect.remove()
-            self.rect = None
-            # now zoom in
-            # print("zooming in")
-            start_time = self.zoom_coords[0]
-            end_time = mdates.num2date(event.xdata)
-            self._set_xlim(start_time, end_time)
-
-            self._set_ylim(self.zoom_coords[1], event.ydata)
-            # check if end_time is close enough to the end
-            self.zoomed = True
-        self.canvas.mpl_disconnect(self.motion_connect)
-        self.canvas.draw()
-
-    def _button_press(self, event):
-        if event.dblclick:
-            # print("Double clicked")
-            self._double_click(event)
-            return
-        if not event.xdata:
-            return
-        # zoom in on the coords
-        # print("button press")
-        # print(event)
-        t0 = mdates.num2date(event.xdata)
-        y0 = event.ydata
-        self.zoom_coords = [t0, event.ydata]
-        self.rect = Rectangle((t0, y0), timedelta(seconds=1), 0,
-                              facecolor='None', edgecolor='slategrey',
-                              lw=2, ls='--')
-        self.axis.add_patch(self.rect)
-        # print("finish button press")
-        self.motion_connect = self.canvas.mpl_connect('motion_notify_event', self._on_motion)
-
-    def _single_click_dep(self, event):
-        if event.xdata:  # else pass, not on graph
-            # zoom in on the coords
-            # print("single click")
-            self._click_thread = None
-            # print(event)
-            x0 = event.xdata
-            y0 = event.ydata
-            # self.zoom_coords = [event.xdata, event.ydata]
-            time = mdates.num2date(event.xdata)
-            # print(f"x: {x0}, y0: {y0}, time: {time.strftime('%H:%M:%S')}")
-
-    def _on_motion(self, event):
-        if event.xdata:
-            x1 = mdates.num2date(event.xdata)
-            y1 = event.ydata
-            self.rect.set_width(x1 - self.zoom_coords[0])
-            self.rect.set_height(y1 - self.zoom_coords[1])
-            self.rect.set_xy(self.zoom_coords)
-            self.canvas.draw()
-        else:
-            if event.x < 250:
-                # is off the left side of the graph, snap to side
-                pass
-
-    def _double_click(self, event):
-        self.zoom_coords = []
-        self.zoomed = False
-        self.axis.relim()
-        self.axis.autoscale()
-        self.canvas.draw()
 
     def _set_ylim(self, y1, y2):
         if y1 > y2:
