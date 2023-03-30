@@ -4,7 +4,7 @@
 
 """
 
-__author__ = "Kyle Vitatus Lopin"
+__author__ = "Kyle Vitautus Lopin"
 
 # standard libraries
 import json
@@ -65,25 +65,25 @@ class Notebook(tk.Frame):
                                            allow_zoom=True)
         self.temp_plot.pack()
 
-        _refl_frame = tk.Frame(notebook)
-        self.refl_plots = dict()
-        for position in global_params.POSITIONS:
-            # print(position)
-            _plt = graph.PyPlotFrame(_refl_frame, root_app,
-                                     fig_size=(3, 4),
-                                     ylabel="Reflectane",
-                                     xlabel="Wavelengths (nm)",
-                                     ylim=[0, 1.5], xlim=[1350, 1650])
-            _plt.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-            self.refl_plots[position] = _plt
-        _refl_frame.pack()
+        # _refl_frame = tk.Frame(notebook)
+        # self.refl_plots = dict()
+        # for position in global_params.POSITIONS:
+        #     # print(position)
+        #     _plt = graph.PyPlotFrame(_refl_frame, root_app,
+        #                              fig_size=(3, 4),
+        #                              ylabel="Reflectance",
+        #                              xlabel="Wavelengths (nm)",
+        #                              ylim=[0, 1.5], xlim=[1350, 1650])
+        #     _plt.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        #     self.refl_plots[position] = _plt
+        # _refl_frame.pack()
 
         notebook.add(self.ory_plot, text="Oryzanol")
         notebook.add(self.av_plot, text="AV")
         notebook.add(self.temp_plot, text="Temperature")
-        notebook.add(_refl_frame, text="Reflectance")
+        # notebook.add(_refl_frame, text="Reflectance")
 
-    def update(self, position, data):
+    def update_notebook(self, position, data):
         # print("pp", data.time_series)
         # print(type(data))
         self.update_temp(data.time_series,
@@ -98,33 +98,33 @@ class Notebook(tk.Frame):
             self.update_av(data.time_series,
                            data.av, position)
 
-    def update_spectrum(self, raw_data, position):
-        # TODO: convert the models from device_number to positions
-        device = POSITIONS[position]
-        print("ff", self.refl_plots.keys(), device)
-        reference_data = MODEL_INFO[device]["Ref Intensities"]
-        reflectance_data = divide(raw_data, reference_data)
-        self.refl_plots[position].update(WAVELENGTHS,
-                                         reflectance_data,
-                                         show_mean=False)
+    # def update_spectrum(self, raw_data, position):
+    #     # TODO: convert the models from device_number to positions
+    #     device = POSITIONS[position]
+    #     print("ff", self.refl_plots.keys(), device)
+    #     reference_data = MODEL_INFO[device]["Ref Intensities"]
+    #     reflectance_data = divide(raw_data, reference_data)
+    #     self.refl_plots[position].update_graph(WAVELENGTHS,
+    #                                            reflectance_data,
+    #                                            show_mean=False)
 
     def update_ory(self, time, ory_conc, _position):
-        self.ory_plot.update(time, ory_conc,
-                             label=_position)
+        self.ory_plot.update_graph(time, ory_conc,
+                                   label=_position)
 
     def update_av(self, time, av, device):
-        print("update av")
-        print(time, av)
-        self.av_plot.update(time, av,
-                            label=device)
+        # print("update av")
+        # print(time, av)
+        self.av_plot.update_graph(time, av,
+                                  label=device)
 
     def update_temp(self, time, cpu_temp,
                     sensor_temp, _position):
         sensor_mask = np.ma.masked_not_equal(np.array(sensor_temp), 0.0)
 
-        self.temp_plot.update(time, cpu_temp,
-                              label=f"CPU {_position}",
-                              show_mean=False)
+        self.temp_plot.update_graph(time, cpu_temp,
+                                    label=f"CPU {_position}",
+                                    show_mean=False)
         # print(sensor_mask)
         # print(np.array(time)[sensor_mask.mask])
         if len(time) != len(sensor_mask.mask) or \
@@ -134,7 +134,7 @@ class Notebook(tk.Frame):
                   f" len temp {len(np.array(sensor_temp)[sensor_mask.mask])}")
             print(np.array(time)[sensor_mask.mask])
             print(np.array(sensor_temp)[sensor_mask.mask])
-        self.temp_plot.update(np.array(time)[sensor_mask.mask],
-                              np.array(sensor_temp)[sensor_mask.mask],
-                              label=f"Sensor {_position}",
-                              show_mean=False)
+        self.temp_plot.update_graph(np.array(time)[sensor_mask.mask],
+                                    np.array(sensor_temp)[sensor_mask.mask],
+                                    label=f"Sensor {_position}",
+                                    show_mean=False)
