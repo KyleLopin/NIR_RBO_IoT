@@ -132,11 +132,13 @@ class Notebook(tk.Frame):
         print(f"mask: {type(sensor_mask.mask)}")
         if len(time) != len(sensor_mask.mask) or \
                 len(sensor_temp) != len(sensor_mask.mask):
-            print("Error in lent of sensor temp mask")
-            print(f"len time {len(np.array(time)[sensor_mask.mask])}"
-                  f" len temp {len(np.array(sensor_temp)[sensor_mask.mask])}")
+            print("Error in length of sensor temp mask")
+            with open("notebook_debug.dump", 'a') as _file:
+                _file.write(f"sensor temp: {sensor_temp}")
+                _file.write(f"sensor mask: {sensor_mask.mask}")
             # print(np.array(time)[sensor_mask.mask])
             # print(np.array(sensor_temp)[sensor_mask.mask])
+
         self.temp_plot.update_graph(np.array(time)[sensor_mask.mask],
                                     np.array(sensor_temp)[sensor_mask.mask],
                                     label=f"Sensor {_position}",
