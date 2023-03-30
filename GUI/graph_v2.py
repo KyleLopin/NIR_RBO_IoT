@@ -161,11 +161,11 @@ class PyPlotFrame(tk.Frame):
                                                          color=_color,
                                                          alpha=ROLL_ALPHA)
         else:
-            self.lines[label].set_xdata(x)
+            self.lines[label].set_xdata(mdates.date2num(x))
             self.lines[label].set_ydata(y)
 
             if show_mean:
-                self.mean_lines[label].set_xdata(x)
+                self.mean_lines[label].set_xdata(mdates.date2num(x))
                 self.mean_lines[label].set_ydata(rolling_data)
 
         # print(f"check1 {self.zoomed}, {label}")

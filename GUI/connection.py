@@ -54,7 +54,7 @@ MQTT_VERSION = mqtt.MQTTv311
 DATA_TOPIC = "device/+/data"
 CONTROL_TOPIC = "device/+/control"
 
-CONNECTION_OPTIONS = ["HIVEMQ", "local"]
+CONNECTION_OPTIONS = ["HIVEMQ"]
 
 
 class ConnectionClass:
@@ -169,7 +169,7 @@ class BaseConnectionClass:
             msg (mqtt.MQTTMessage): JSON package directed from the MQTT broker,
             usually from a sensor
         """
-        print("Got message:", msg.topic, msg.payload)
+        # print("Got message:", msg.topic, msg.payload)
         device = msg.topic.split("/")[1]
 
         # devices, i.e. "device_2" are send in the topic, convert that
@@ -239,7 +239,7 @@ class BaseConnectionClass:
             # the packet will be in the form of "packet id number": "data", i.e.
             # "198": "25, 234, 299, ...."
             for key in packet:
-                print(f"data key: {key}")
+                # print(f"data key: {key}")
                 if "data packets" not in key:
                     try:
                         self.data.add_data(packet[key])

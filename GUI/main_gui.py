@@ -12,7 +12,7 @@ import json
 import logging
 import os
 import sys
-import tkinter as tk
+from tkinter import Tk, TOP, BOTH, BOTTOM, filedialog
 
 # local files
 import connection
@@ -58,9 +58,9 @@ MOCK_DATA = False
 # os.system("xterm -hold -e 'mosquitto -v'")
 
 
-class RBOGUI(tk.Tk):
+class RBOGUI(Tk):
     def __init__(self, parent=None):
-        tk.Tk.__init__(self, parent)
+        Tk.__init__(self, parent)
         self.today = datetime.today().strftime("%Y-%m-%d")
         self.graphs = notebook.Notebook(self)
         self.graphs.pack(expand=True)
@@ -69,9 +69,9 @@ class RBOGUI(tk.Tk):
 
         # check what time stamps for each device_number we have received
         self.check_previous_data()
-        self.graphs.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+        self.graphs.pack(side=TOP, expand=True, fill=BOTH)
         self.info = info_frame.InfoFrame(self, POSITIONS)
-        self.info.pack(side=tk.BOTTOM)
+        self.info.pack(side=BOTTOM)
         # self.status_frame = graph.StatusFrame(self)
         # self.status_frame.pack(side=tk.BOTTOM)
         self.mqtt_broker_checkin = 0
@@ -80,7 +80,7 @@ class RBOGUI(tk.Tk):
             self.connection2 = mock_conn.MockConn(self, data=self.data,
                                                   name="position 3", rate=50)
         else:
-            print(f"root dir {dir(self)}")
+            # print(f"root dir {dir(self)}")
             self.connection = connection.ConnectionClass(self, self.data)
         self.data.add_connection(self.connection)
         self.info.add_connection(self.connection)
@@ -169,7 +169,7 @@ class RBOGUI(tk.Tk):
 
     def save_data(self, data_type, device):
         print(f"saving data |{data_type}| for device_number: {device}")
-        _file = tk.filedialog.asksaveasfile(mode='w', defaultextension=".csv")
+        _file = filedialog.asksaveasfile(mode='w', defaultextension=".csv")
         if _file is None:  # asksaveasfile return `None` if dialog closed with "cancel".
             return
         position = global_params.DEVICES[device]
@@ -182,19 +182,13 @@ class RBOGUI(tk.Tk):
             data_set = [device_data.cpu_temp,
                         device_data.sensor_temp]
             _file.write(f"time, CPU Temp at {device}, Sensor Temp at {device}\n")
-        #         print(device_data.time_series)
         times = device_data.time_series
-        #         print(device_data.time_series)
-        times = [i.strftime('%H:%M:%S') for i in device_data.time_series]
+        # times = [i.strftime('%H:%M:%S') for i in device_data.time_series]
         for i, time in enumerate(times):
             line_items = [time]
-            print(data_set)
             for item in data_set:
-                #                 print(item)
                 line_items.append(str(item[i]))
-            #             print(line_items)
             line = ",".join(line_items)
-            #             print(line)
             _file.write(line + '\n')
 
     def change_scan_params(self, device, packet):
