@@ -144,7 +144,7 @@ class RBOGUI(Tk):
         for position in POSITIONS:
             print(f"updating position {position}")
             if position in self.data.positions:
-                self.graphs.update(position, self.data.positions[position])
+                self.graphs.update_notebook(position, self.data.positions[position])
 
     def update_model(self, device):
         self.connection.update_model(device)

@@ -116,7 +116,7 @@ class PyPlotFrame(tk.Frame):
                 self.axis.axhline(y=hline, color=HLINE_COLORS[i],
                                   ls='--')
 
-    def update(self, x, y, label=None,
+    def update_graph(self, x, y, label=None,
                show_mean=True):
         """
 
