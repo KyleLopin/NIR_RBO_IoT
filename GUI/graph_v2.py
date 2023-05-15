@@ -10,20 +10,20 @@ __author__ = "Kyle Vitautas Lopin"
 # standard libraries
 from datetime import datetime, timedelta
 import json
+import logging
 import os
 import tkinter as tk
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+logging.getLogger('PIL').setLevel(logging.WARNING)
 
 # installed libraries
 import matplotlib as mp
 import matplotlib.dates as mdates
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from matplotlib.patches import Rectangle
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib import pyplot as plt
-import numpy as np
 
 # local files
 import global_params
-# plt.style.use("seaborn")
 plt.style.use("seaborn")
 
 __location__ = os.path.realpath(
@@ -62,14 +62,25 @@ class PyPlotFrame(tk.Frame):
     def __init__(self, parent, root_app: tk.Tk,
                  fig_size=(3, 3), xlabel=None,
                  ylabel=None, xlim=None,
-                 ylim=None, allow_zoom=False,
+                 ylim=None,
+                 ylim_buttons: tuple[str, str, str] = None,
                  hlines: list = None,
                  use_log=False):
         tk.Frame.__init__(self, master=parent)
         self.root_app = root_app
-        self.allow_zoom = allow_zoom
         self.ylim = ylim
         self.config(bg='white')
+
+        # make buttons to change y axis limits if used
+        if ylim_buttons:
+            button_frame = tk.Frame(self)
+            for button_opt in ylim_buttons:
+                button_text = f"{button_opt[0]}\n({button_opt[1]:,}-{button_opt[2]:,})"
+                tk.Button(button_frame, text=button_text,
+                          width=15,
+                          command=lambda a=button_opt[1], b=button_opt[2]: self.update_ylim(a, b)
+                          ).pack(side=tk.TOP, pady=10)
+            button_frame.pack(side=tk.LEFT)
 
         # routine to make and embed the matplotlib graph
         self.figure = mp.figure.Figure(figsize=fig_size)
@@ -77,7 +88,7 @@ class PyPlotFrame(tk.Frame):
         self.axis = self.figure.add_subplot(111)
 
         self.canvas = FigureCanvasTkAgg(self.figure, self)
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         if ylabel:
             self.axis.set_ylabel(ylabel, size=LABEL_SIZE)
@@ -117,7 +128,7 @@ class PyPlotFrame(tk.Frame):
                                   ls='--')
 
     def update_graph(self, x, y, label=None,
-               show_mean=True):
+                     show_mean=True):
         """
 
         Args:
@@ -170,7 +181,7 @@ class PyPlotFrame(tk.Frame):
                 self.mean_lines[label].set_xdata(mdates.date2num(x))
                 self.mean_lines[label].set_ydata(rolling_data)
 
-        # print(f"check1 {self.zoomed}, {label}")
+        print(f"check1 {self.zoomed}, {label}")
         if not self.zoomed and label != "blank":
             print("re-limit axis", self.ylim)
             self.axis.relim()
@@ -183,6 +194,11 @@ class PyPlotFrame(tk.Frame):
             # self.axis.set_xticks(self.axis.get_xticks()[::tick_skips])
         print("Update in graph_v2; drawing")
         self.canvas.draw()
+
+    def update_ylim(self, y_low, y_high):
+        print(f"Updating the ylim: {y_low}, {y_high}")
+        self.ylim = [y_low, y_high]
+        self._set_ylim(y_low, y_high)
 
     def rolling_avg(self, _list):
         _rolling_avg = []
@@ -200,12 +216,14 @@ class PyPlotFrame(tk.Frame):
             self.axis.set_ylim([y2, y1])
         else:
             self.axis.set_ylim([y1, y2])
+        self.canvas.draw()
 
     def _set_xlim(self, x1, x2):
         if x1 > x2:
             self.axis.set_xlim([x2, x1])
         else:
             self.axis.set_xlim([x1, x2])
+        self.canvas.draw()
 
 
 if __name__ == '__main__':
@@ -218,7 +236,7 @@ if __name__ == '__main__':
                        fig_size=(9, 4),
                        ylim=[0.1, 100],
                        use_log=True)
-    plot.update([datetime(2023, 2, 24, 0, 1, 51),
-                 datetime(2023, 2, 24, 0, 4, 51)], [1, -5])
+    plot.update_graph([datetime(2023, 2, 24, 0, 1, 51),
+                       datetime(2023, 2, 24, 0, 4, 51)], [1, -5])
     plot.pack()
     root.mainloop()
