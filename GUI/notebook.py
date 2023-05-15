@@ -49,7 +49,8 @@ class Notebook(tk.Frame):
                                           ylabel="Oryzanol Concentrations",
                                           xlabel="Time",
                                           ylim=[0, 16000],
-                                          hlines=[3500, 5000, 8000, 10000])
+                                          hlines=[3500, 5000, 8000, 10000],
+                                          ylim_buttons=global_params.ORY_GRAPH_BUTTON_OPTS)
         self.ory_plot.pack()
         self.av_plot = graph.PyPlotFrame(notebook, root_app,
                                          fig_size=(9, 4),
@@ -61,27 +62,26 @@ class Notebook(tk.Frame):
         self.temp_plot = graph.PyPlotFrame(notebook, root_app,
                                            fig_size=(9, 4),
                                            ylabel="Temperature",
-                                           xlabel="Time",
-                                           allow_zoom=True)
+                                           xlabel="Time")
         self.temp_plot.pack()
 
-        _refl_frame = tk.Frame(notebook)
-        self.refl_plots = dict()
-        for position in global_params.POSITIONS:
-            # print(position)
-            _plt = graph.PyPlotFrame(_refl_frame, root_app,
-                                     fig_size=(3, 4),
-                                     ylabel="Reflectance",
-                                     xlabel="Wavelengths (nm)",
-                                     ylim=[0, 1.5], xlim=[1350, 1650])
-            _plt.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-            self.refl_plots[position] = _plt
-        _refl_frame.pack()
+        # _refl_frame = tk.Frame(notebook)
+        # self.refl_plots = dict()
+        # for position in global_params.POSITIONS:
+        #     # print(position)
+        #     _plt = graph.PyPlotFrame(_refl_frame, root_app,
+        #                              fig_size=(3, 4),
+        #                              ylabel="Reflectance",
+        #                              xlabel="Wavelengths (nm)",
+        #                              ylim=[0, 1.5], xlim=[1350, 1650])
+        #     _plt.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        #     self.refl_plots[position] = _plt
+        # _refl_frame.pack()
 
         notebook.add(self.ory_plot, text="Oryzanol")
         notebook.add(self.av_plot, text="AV")
         notebook.add(self.temp_plot, text="Temperature")
-        notebook.add(_refl_frame, text="Reflectance")
+        # notebook.add(_refl_frame, text="Reflectance")
 
     def update_notebook(self, position, data):
         # print("pp", data.time_series)
@@ -120,6 +120,7 @@ class Notebook(tk.Frame):
 
     def update_temp(self, time, cpu_temp,
                     sensor_temp, _position):
+        print(f"Update temp with calls: {time}, {cpu_temp}, {sensor_temp}, {_position}")
         sensor_mask = np.ma.masked_not_equal(np.array(sensor_temp), 0.0)
 
         self.temp_plot.update_graph(time, cpu_temp,
