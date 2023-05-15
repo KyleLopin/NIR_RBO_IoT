@@ -10,23 +10,27 @@ __author__ = "Kyle Vitatus Lopin"
 # standard libraries
 import csv
 import datetime as dt
+from dateutil.parser import parse
 import json
 import logging
 import os
 import shutil
 import sys
-import tkinter as tk  # typehinting
+import tkinter as tk  # type hinting
 
 # installed libraries
+from codetiming import Timer
 import numpy as np
 
 # sys.path.append(os.getcwd())
-sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
-print(sys.path)
+# sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
+# print(sys.path)
 # local files
 import global_params
 import helper_functions
 import model
+
+logger = logging.getLogger(__name__)
 
 MAX_DATA_PTS = 600
 __location__ = os.path.realpath(
@@ -67,23 +71,25 @@ for header in FILE_HEADER:
     indices[header] = FILE_HEADER.index(header)
 
 
-# def mean_depr(_list: list):
-#     log_deprecation_violation("mean_depr called")
-#     sum = 0
-#     for num in _list:
-#         sum += int(num)
-#     return sum / len(_list)
-
-
-# def divide_depr(list1: list, list2: list):
-#     log_deprecation_violation("divide_depr called")
-#     result = []
-#     for num1, num2 in zip(list1, list2):
-#         result.append(float(num1) / float(num2))
-#     return result
-
-
 def isfloat(str_to_test: str) -> bool:
+    """
+    Test if the argument passed in can be converted to an int
+
+    Args:
+        str_to_test (str): string to test
+
+    Returns:
+        True if the argument can be converted to int, else False
+
+    Test
+    --------------
+    >>> isfloat("1")
+    True
+    >>> isfloat("b")
+    False
+    >>> isfloat("1.543")
+    True
+    """
     try:
         float(str_to_test)
         return True
@@ -92,6 +98,24 @@ def isfloat(str_to_test: str) -> bool:
 
 
 def isint(str_to_test: str) -> bool:
+    """
+    Test if the argument passed in can be converted to an int
+
+    Args:
+        str_to_test (str): string to test
+
+    Returns:
+        True if the argument can be converted to int, else False
+
+    Test
+    --------------
+    >>> isint("1")
+    True
+    >>> isint("b")
+    False
+    >>> isint("1.543")
+    False
+    """
     try:
         int(str_to_test)
         return True
@@ -104,25 +128,88 @@ def log_deprecation_violation(msg):
         log_file.write(msg)
 
 
+def extract_time_stamp(_date_str: str) -> str:
+    """
+    Test if the input string has a valid time format, either "%H:%M:%S", or
+    "%Y-%m-%d %H:%M:%S" and return just the time stamp, or an empty string if
+    it is not in either format
+
+    Args:
+        _date_str (str): string to test for a valid date
+
+    Returns:
+        str: string with the time if there was a valid date time string
+        passed in; else an empty string if it was not a valid time
+
+   Test
+    -------------
+    >>> extract_time_stamp("bbb")
+    ''
+    >>> extract_time_stamp("2023-05-12 10:25:45")
+    '10:25:45'
+    >>> extract_time_stamp("13:45:30")
+    '13:45:30'
+    >>> extract_time_stamp("2023-05-12")
+    ''
+   """
+    formats = ["%H:%M:%S", "%Y-%m-%d %H:%M:%S"]
+    time_stamp = ""
+
+    for fmt in formats:
+        try:
+            datetime_obj = dt.datetime.strptime(_date_str, fmt)
+            time_stamp = datetime_obj.strftime("%H:%M:%S")
+            break
+        except ValueError:
+            continue
+    return time_stamp
+
+
 # TODO: convert DataPacket class to set of functions
-def convert_csv_row_to_packet(csv_row):
+def convert_csv_row_to_packet(csv_row_list: list) -> dict:
+    """
+    Convert a list from the csv save file into a dictionary, similar
+    to the data packet received from the sensor.  If the list of
+    csv entries is not formatted correctly, this will return an empty dict
+
+    Args:
+        csv_row_list (list): the row from the saved csv file, already split
+        into a list on the commas
+
+    Returns:
+        dict: data packet format with each column of the csv file put
+        with the proper key
+
+    Test
+    -------------
+    >>> convert_csv_row_to_packet(['', '', '', '', '', '', '', ''])
+    {}
+    >>> convert_csv_row_to_packet(['2023-03-07 00:02:53', 'position 1', '15746.0', '29.0', '40.2', '0.0', '0'])
+    {'packet_id': 0, 'position': 'position 1', 'time': '00:02:53', 'CPUTemp': 40.2, 'SensorTemp': 0.0, 'OryConc': 15746.0, 'AV': 29.0}
+    """
     pkt = {}
-    if isint(csv_row[indices["packet_id"]]):
-        pkt["packet_id"] = int(csv_row[indices["packet_id"]])
-    # for obj in ["time", "position"]:
-    #     pkt[obj] = csv_row[indices[obj]].strip()
-    pkt["position"] = csv_row[indices["position"]].strip()
+    if isint(csv_row_list[indices["packet_id"]]):
+        # use local function to test if packet id can be converted
+        pkt["packet_id"] = int(csv_row_list[indices["packet_id"]])
+    else:  # ignore packet id that is missing or formatted wrong
+        return {}
+    pkt["position"] = csv_row_list[indices["position"]].strip()
+    if pkt["position"] not in POSITIONS:
+        # log message to test this works, try to catch if the device was sent instead
+        logger.error(f"received message from device not in POSITIONS list| pkt: {pkt}")
+        return {}  # ignore messages from devices not in list
+
     # for time strip the date from it, split at the space between
     # the data and time and take the time at the end
-    pkt["time"] = csv_row[indices["time"]].split(" ")[1].strip()
+    pkt["time"] = extract_time_stamp(csv_row_list[indices["time"]])
     # print(csv_row)
     # print(csv_row[indices["time"]].split(" "))
     # print(f"load csv row: {pkt}")
     for obj in ["CPUTemp", "SensorTemp", "OryConc"]:
-        if isfloat(csv_row[indices[obj]]):
-            pkt[obj] = float(csv_row[indices[obj]])
+        if isfloat(csv_row_list[indices[obj]]):
+            pkt[obj] = float(csv_row_list[indices[obj]])
     try:  # this will be a ' ' if there is no AV key
-        pkt['AV'] = float(csv_row[indices['AV']])
+        pkt['AV'] = float(csv_row_list[indices['AV']])
     except:
         pass
         # pkt['AV'] = None
@@ -268,6 +355,7 @@ class DeviceData:
         if "AV" in data_pkt :
             # print(f"inserting AV: {data_pkt['AV']}")
             self.av.insert(insert_idx, float(data_pkt["AV"]))
+
             # print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
         elif self.use_av:
             self.av.insert(insert_idx, np.nan)
@@ -366,6 +454,7 @@ class TimeStreamData:
     def __init__(self, root_app):
         # print("Init Time Stream Data")
         # print(f"FILE HEADER: {FILE_HEADER}")
+        print(f"dt2: {dt.datetime.now()}")
         self.master_graph = root_app.graphs
         self.connection = None
         devices = DEVICES[:]  # copy to append to it
@@ -479,9 +568,12 @@ class TimeStreamData:
             device_data.add_data_pkt(data_pkt, self.models)
             print(f"len: {len(device_data.time_series)}")
 
+    @Timer(name="add_data", text="Time: {:.4f}", logger=logging.debug)
     def add_data(self, data_pkt: dict, save_data_pkt=True):
         # TODO: fix this, its a mess
-        # print(f"data_pkt: {data_pkt}")
+        print(f"data_pkt: {data_pkt}")
+        # print(f"dt3: {dt.datetime.now()}")
+        logger.debug(f"adding data packet: {data_pkt}")
         if type(data_pkt) is not dict:
             return 204  # TODO: sometimes an int gets in here.  look at sensor code to fix
         # if data is from a database, it has to be converted first
