@@ -7,9 +7,11 @@ Test the data_class.TimeStreamData class
 __author__ = "Kyle Vitautus Lopin"
 
 # standard libraries
+import datetime
 import datetime as dt
 import filecmp
 import json
+import logging
 import os
 import shutil
 import sys
@@ -17,11 +19,18 @@ import unittest
 from unittest import mock
 
 # installed libraries
-import freezegun
+from freezegun import freeze_time
 
 sys.path.append(os.path.join('..', 'GUI'))
 # local files
 from GUI import data_class
+from GUI import main_gui
+
+logging.basicConfig(filename=f'log/test.log',
+                    format="%(asctime)-15s %(name)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
+                    datefmt='%m/%d/%Y %I:%M:%S.%f %p',
+                    filemode='a+',
+                    level=logging.DEBUG)
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -178,25 +187,31 @@ def get_data_file(path=SAVED_FILE_PATH) -> str:
         return "No file yet"
 
 
-@freezegun.freeze_time(TEST_DATE)
+@freeze_time(TEST_DATE)
 class TestAddDataPacket(unittest.TestCase):
     """
     Test that on start up of the data_class.TimeStreamData that the
     classes add_data_pkt works properly for good data and also data that
     should be ignored, and it will test for a date change.
     """
+    # @freeze_time(TEST_DATE)
     def setUp(self) -> None:
         """
         Check that the tearDown method is clearing the saved files that are made,
         initialize the data_class.TimeStreamData class and save to self.
         """
+        print("Setting up")
+        print(f"cwd: {os.getcwd()}")
+        print(f"path: {sys.path}")
         if get_data_file() != "No file yet":  # make sure not file yet for this testcase
             self.tearDown()
         self.assertEqual(get_data_file(), "No file yet",
                          msg="File is not being deleted between tests correctly")
-        with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
+        print(f"get file 1: {get_data_file()}")
+        with mock.patch("main_gui.RBOGUI", new_callable=mock.PropertyMock,
                         return_value=True) as mocked_gui:
             self.tsd = data_class.TimeStreamData(mocked_gui)
+            print(f"get file 2: {get_data_file()}")
 
     def tearDown(self) -> None:
         """
@@ -206,7 +221,7 @@ class TestAddDataPacket(unittest.TestCase):
         if os.path.exists(SAVED_FILE_PATH):
             os.remove(SAVED_FILE_PATH)
 
-    @freezegun.freeze_time(TEST_DATE)  # for testing 1 method
+    # @freeze_time(TEST_DATE)  # for testing 1 method
     def test_add_data_pkt(self):
         """
         Test that when calling the data_class.TimeStreamData method of
@@ -215,25 +230,27 @@ class TestAddDataPacket(unittest.TestCase):
         return a 0 code, and the device data will be checked and that
         the data is saved to a file correctly.
         """
+        # print(dt.datetime.now())
         data_dict = json.loads(DATA_PKT1)
         returned_value = self.tsd.add_data(data_dict)
         device_data = \
             self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
-        self.assertEqual(returned_value, 0,
+        self.assertEqual(0, returned_value,
                          msg="add_data is not returning a zero but an error code")
         self.assertListEqual(device_data.time_series,
                              [dt.datetime(2022, 11, 18, 9, 55, 22)],
                              msg="add_data is not saving a single time_series "
                                  "correctly")
         print(f"time series: {device_data.time_series}")
-        self.assertListEqual(device_data.av, [-1.0])
-        self.assertListEqual(device_data.oryzanol, [-20139.0],
+        self.assertListEqual([-1.0], device_data.av)
+        self.assertListEqual([-20139.0], device_data.oryzanol,
                              msg="add_data is not saving a single oryzanol correctly")
-        self.assertEqual(get_data_file(),
-                         "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
+        self.assertEqual("time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
                          "2022-11-18 09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n",
+                         get_data_file(),
                          msg=f"Saved data file is not right for test_add_data_pkt")
 
+    # @freeze_time(TEST_DATE)  # for testing 1 method
     def test_add_2_pkts(self):
         """
         Test that adding 2 packets creates the correct device data
@@ -242,8 +259,11 @@ class TestAddDataPacket(unittest.TestCase):
         correctly, and the return code, device_data time_series and oryzanol
         attributes, and the saved file are correct.
         """
+        print("add packet 1")
+        print(f"dt: {datetime.datetime.now()}")
         self.test_add_data_pkt()  # add first data packet in other test
         # add second packet
+        print("done add packet 1")
         returned_value = self.tsd.add_data(json.loads(DATA_PKT2))
         device_data = \
             self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
@@ -260,8 +280,8 @@ class TestAddDataPacket(unittest.TestCase):
                              "for the second packet")
         self.assertEqual(get_data_file(),
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                         "09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n"
-                         "10:05:13, position 2, -20602, -2, 48.31, 41.79, 3, \n",
+                         "2022-11-18 09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n"
+                         "2022-11-18 10:05:13, position 2, -20602, -2, 48.31, 41.79, 3, \n",
                          msg=f"Saved data file is not right for test_add_2_pkts")
 
     def test_make_save_file(self):
@@ -306,11 +326,11 @@ class TestAddDataPacket(unittest.TestCase):
         self.assertListEqual(device_data.oryzanol, [-20139.0],
                              msg="add_data is not saving a single oryzanol correctly")
         self.assertEqual(get_data_file(), "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                                          "09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n",
+                                          "2022-11-18 09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n",
                          msg=f"Saved data file is not right for test_add_data_pkt")
 
 
-@freezegun.freeze_time(TEST_DATE)
+@freeze_time(TEST_DATE)
 class TestLoadData(unittest.TestCase):
     """
     Test that when you start data_class.TimeStreamData with a mocked
@@ -374,7 +394,7 @@ class TestLoadData(unittest.TestCase):
                              msg="Missing packets list wrong")
 
 
-@freezegun.freeze_time(TEST_DATE)
+@freeze_time(TEST_DATE)
 class TestAddPos1DataPacket(unittest.TestCase):
     def setUp(self) -> None:
         """
@@ -423,11 +443,11 @@ class TestAddPos1DataPacket(unittest.TestCase):
                              msg="add_data is not saving a single oryzanol correctly")
         self.assertEqual(get_data_file(),
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                         "23:06:13, position 1, -20648, 10, 47.24, 0, 46, \n",
+                         "2022-11-18 23:06:13, position 1, -20648, 10, 47.24, 0, 46, \n",
                          msg=f"Saved data file is not right for test_add_av")
 
 
-@freezegun.freeze_time(TEST_DATE)
+@freeze_time(TEST_DATE)
 class TestChangeDate(unittest.TestCase):
     def setUp(self) -> None:
         """
@@ -483,11 +503,11 @@ class TestChangeDate(unittest.TestCase):
                              msg="add_data is not saving a single oryzanol correctly")
         self.assertEqual(get_data_file(),
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                         "09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n",
+                         "2022-11-18 09:55:22, position 2, -20139, -1, 48.31, 0, 1, \n",
                          msg=f"Saved data file is not right for test_add_data_pkt")
         data_dict = json.loads(DATA_PKT_POSITION_1)
         returned_value = self.tsd.add_data(data_dict)
-        freeze1 = freezegun.freeze_time(NEXT_DATE)
+        freeze1 = freeze_time(NEXT_DATE)
         freeze1.start()
         returned_value = self.tsd.add_data(json.loads(DATA_PKT_NEW))
         device_data = \
@@ -504,13 +524,13 @@ class TestChangeDate(unittest.TestCase):
                                  "data packet set for a new day")
         self.assertEqual(get_data_file(TOMORROW_FILE_PATH),
                          "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                         "00:06:13, position 2, -20648, -5, 47.24, 0, 4, \n"
-                         "00:07:13, position 1, -20111, 12, 47.24, 0, 4, \n",
+                         "2022-11-19 00:06:13, position 2, -20648, -5, 47.24, 0, 4, \n"
+                         "2022-11-19 00:07:13, position 1, -20111, 12, 47.24, 0, 4, \n",
                          msg=f"Saved data file is not right for test_add_data_pkt")
         freeze1.stop()
 
 
-@freezegun.freeze_time(TEST_DATE)
+@freeze_time(TEST_DATE)
 class TestUpdateGraph(unittest.TestCase):
     def tearDown(self) -> None:
         """
@@ -536,7 +556,7 @@ class TestUpdateGraph(unittest.TestCase):
         print(f"av data: {device_data.av}")
 
 
-@freezegun.freeze_time(TEST_DATE)
+@freeze_time(TEST_DATE)
 class TestLoadPreviousData(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
