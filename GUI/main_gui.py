@@ -31,11 +31,18 @@ __location__ = os.path.realpath(
 DATA_HEADERS = data_class.SAVED_DATA_KEYS
 
 today = datetime.today().strftime("%Y-%m-%d")
-logging.basicConfig(filename=f'log/{today}.log',
-                    format="%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
-                    datefmt='%m/%d/%Y %I:%M:%S %p',
-                    filemode='a+',
-                    level=logging.INFO)
+logger = logging.getLogger(__name__)
+log_handler = logging.FileHandler(f'log/{today}.log')
+log_handler.setLevel(logging.DEBUG)
+log_handler.setFormatter("%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s")
+logger.addHandler(log_handler)
+
+
+# logging.basicConfig(filename=f'log/{today}.log',
+#                     format="%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
+#                     # datefmt='%m/%d/%Y %I:%M:%S %p',
+#                     filemode='a+',
+#                     level=logging.DEBUG)
 
 
 def get_settings(key):
@@ -48,7 +55,7 @@ def get_settings(key):
 DEVICES = list(global_params.DEVICES.keys())
 POSITIONS = global_params.POSITIONS
 MOCK_DATA = get_settings("Mock input")
-logging.info(f"Mocking data: {MOCK_DATA}")
+logger.info(f"Mocking data: {MOCK_DATA}")
 MOCK_DATA = False
 
 
@@ -68,7 +75,7 @@ class RBOGUI(Tk):
         self.data = data_class.TimeStreamData(self)
 
         # check what time stamps for each device_number we have received
-        self.check_previous_data()
+        self.load_previous_data()
         self.graphs.pack(side=TOP, expand=True, fill=BOTH)
         self.info = info_frame.InfoFrame(self, POSITIONS)
         self.info.pack(side=BOTTOM)
@@ -112,18 +119,15 @@ class RBOGUI(Tk):
         except:
             self.connection = None
 
-    def check_mqtt(self):
-        print("checking mqtt")
-        if self.connection.is_server_found():
-            pass
+    def load_previous_data(self):
+        for position in POSITIONS:
+            print(f"updating position {position}")
+            if position in self.data.positions:
+                self.graphs.update_notebook(position, self.data.positions[position])
 
-    def check_previous_data(self):
-        data_filename = self.data.save_file
-        self.open_file(data_filename, today_data=True)
-
-    def check_remote_data(self, device):
-        print(f"checking remote data")
-        self.data.get_missing_packets(device)
+    # def check_remote_data(self, device):
+    #     print(f"checking remote data")
+    #     self.data.get_missing_packets(device)
 
     def update_date(self):
         self.today = datetime.today().strftime("%Y-%m-%d")
@@ -134,20 +138,8 @@ class RBOGUI(Tk):
                                          {"command": "update date",
                                           "date": self.today})
 
-    def open_file(self, filename, today_data=False):
-        # stop reading data if opening another days data
-        if hasattr(self, "connection"):  # this is looking for saved data
-            self.connection.stop_conn()
-            # clear data
-            self.data = data_class.TimeStreamData(self.graph)
-
-        for position in POSITIONS:
-            print(f"updating position {position}")
-            if position in self.data.positions:
-                self.graphs.update_notebook(position, self.data.positions[position])
-
-    def update_model(self, device):
-        self.connection.update_model(device)
+    # def update_model(self, device):
+    #     self.connection.update_model(device)
 
     def maintain_mqtt_connact(self):
         """ Loop to keep checking if mqtt is still contacted if computer
@@ -195,17 +187,17 @@ class RBOGUI(Tk):
         packet["command"] = "update scan params"
         self.connection.send_command(device, packet)
 
-    def check_sensor_settings(self, device):
-        with open(os.path.join(__location__, "sensor_settings.json"), "r") as _file:
-            data = json.load(_file)
-        device_data = data[device]
-        packet = {"command": "update signal chain"}
-        packet["signal params"] = device_data
-
-        self.connection.send_command(device, packet)
-        # update the graph so the reflectance data changes
-        # the graph will get the data from sensor_settings.json
-        self.graph.update_signal_processing(device)
+    # def check_sensor_settings(self, device):
+    #     with open(os.path.join(__location__, "sensor_settings.json"), "r") as _file:
+    #         data = json.load(_file)
+    #     device_data = data[device]
+    #     packet = {"command": "update signal chain"}
+    #     packet["signal params"] = device_data
+    #
+    #     self.connection.send_command(device, packet)
+    #     # update the graph so the reflectance data changes
+    #     # the graph will get the data from sensor_settings.json
+    #     self.graph.update_signal_processing(device)
 
     def get_remote_data(self):
         for device in global_params.DEVICES:
