@@ -46,16 +46,12 @@ class TestDataClassFunctions(unittest.TestCase):
         expected = {'packet_id': 0, 'position': 'position 1', 'time': '00:02:53', 'CPUTemp': 40.2,
                     'SensorTemp': 0.0, 'OryConc': 15746.0, 'AV': 29.0}
         self.assertEquals(output, expected)
-
-    def test_convert_csv_row_to_packet_1(self):
-        """  """
-        csv_row = "2023-03-07 00:02:53,position 1,15746.0,29.0,40.2,0.0,0"
-        _input = csv_row.split(",")
-        print(f"input: {_input}")
+        # test a line that caused an error
+        _input = [' 00:02:37', ' position 2', '-164265.5', '-2', '46.2', '42.9', '1', '']
         output = data_class.convert_csv_row_to_packet(_input)
         print(f"output: {output}")
-        expected = {'packet_id': 0, 'position': 'position 1', 'time': '00:02:53', 'CPUTemp': 40.2,
-                    'SensorTemp': 0.0, 'OryConc': 15746.0, 'AV': 29.0}
+        expected = {'packet_id': 1, 'position': 'position 2', 'time': '00:02:37', 'CPUTemp': 46.2, 'SensorTemp': 42.9,
+                    'OryConc': -164265.5, 'AV': -2.0}
         self.assertEquals(output, expected)
 
     def test_valid_time(self):

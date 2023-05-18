@@ -9,6 +9,7 @@ __author__ = "Kyle Vitautus Lopin"
 # standard libraries
 import datetime
 import datetime as dt
+import difflib
 import filecmp
 import json
 import logging
@@ -194,7 +195,7 @@ class TestAddDataPacket(unittest.TestCase):
     classes add_data_pkt works properly for good data and also data that
     should be ignored, and it will test for a date change.
     """
-    # @freeze_time(TEST_DATE)
+    @freeze_time(TEST_DATE)
     def setUp(self) -> None:
         """
         Check that the tearDown method is clearing the saved files that are made,
@@ -221,7 +222,7 @@ class TestAddDataPacket(unittest.TestCase):
         if os.path.exists(SAVED_FILE_PATH):
             os.remove(SAVED_FILE_PATH)
 
-    # @freeze_time(TEST_DATE)  # for testing 1 method
+    @freeze_time(TEST_DATE)  # for testing 1 method
     def test_add_data_pkt(self):
         """
         Test that when calling the data_class.TimeStreamData method of
@@ -363,10 +364,20 @@ class TestLoadData(unittest.TestCase):
         data file and sort the file and save it in the same place.
         """
         # test if the function is sorting and saving correctly
-        self.assertTrue(
-            filecmp.cmp(SAVED_FILE_PATH, SORTED_TEMPLATE_FILE,
-                        shallow=False),
-            msg="Sorted file is not correct after loading and saving")
+        # filecmp.cmp is not returning the correct answer for some reason
+        # files_are_the_same = filecmp.cmp(SAVED_FILE_PATH, SORTED_TEMPLATE_FILE,
+        #                                  shallow=False)
+        print("Files are not the same, here are the differences")
+        with open(SAVED_FILE_PATH, 'r') as file1, open(SORTED_TEMPLATE_FILE, 'r') as file2:
+            diff = difflib.unified_diff(file1.readlines(), file2.readlines(),
+                                        fromfile=SAVED_FILE_PATH, tofile=SORTED_TEMPLATE_FILE)
+            differences = list(diff)
+            for line in differences:
+                print(line)
+        print(f"differences: {differences}")
+        print('=======')
+        self.assertListEqual([], differences,
+                             msg="Sorted file is not correct after loading and saving")
 
     def test_add_pos2_av(self):
         """ Test that when reading the saved file data that the acid
@@ -532,7 +543,7 @@ class TestChangeDate(unittest.TestCase):
 
 @freeze_time(TEST_DATE)
 class TestUpdateGraph(unittest.TestCase):
-    def tearDown(self) -> None:
+    def setUp(self) -> None:
         """
         Delete any saved filed for the simulated test data that
         could have been made from adding a data packet
@@ -544,16 +555,29 @@ class TestUpdateGraph(unittest.TestCase):
 
     @mock.patch("GUI.main_gui.RBOGUI")
     def test_update_called(self, mocked_gui):
+        """
+        Check that the graph should update after data is load with the
+        TimeStreamData.add_data call.  This is a little difficult as the
+        graphs are updated though the notebook class, not directly.
+        Their is also a call to update the graph after a set period of
+        time to reduce how many time the graph is updated with a lot
+        of data is loaded at one time, that makes this test not direct
+        """
         self.tsd = data_class.TimeStreamData(mocked_gui)
+        # Test that the update_after is not called yet
+        self.assertEqual(None, self.tsd.update_after)
         data_dict = json.loads(DATA_PKT1)
         returned_value = self.tsd.add_data(data_dict)
-        device_data = \
-            self.tsd.positions["position 2"]  # type: GUI.data_class.DeviceData
+        # Test data is added correctlry
+        self.assertEqual(returned_value, 0)
+        # Test the update_after has been assigned, it should be an RBOGUI.after() call
+        self.assertNotEqual(None, self.tsd.update_after)
+        self.assertIsInstance(self.tsd.update_after, mock.MagicMock)
         self.tsd.update_graph("position 2")
-        mock_graph = mocked_gui.return_value.master_graph
-        pos, device_data = mocked_gui.graphs.update.mock_calls[0].args
-        print(f"position: {pos}, data: {device_data}")
-        print(f"av data: {device_data.av}")
+        pos, device_data = mocked_gui.graphs.update_notebook.mock_calls[0].args
+        # test the update_notebook is called for the correct position
+        self.assertEqual(pos, "position 2")
+
 
 
 @freeze_time(TEST_DATE)
@@ -589,7 +613,7 @@ class TestLoadMixedData(unittest.TestCase):
         with mock.patch("GUI.main_gui.RBOGUI", new_callable=mock.PropertyMock,
                         return_value=True) as mocked_gui:
             self.tsd = data_class.TimeStreamData(mocked_gui)
-
+            print(self.tsd.positions)
             # self.assertListEqual(self.tsd.positions['position 2'].av, [-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0])
             print(f"av: {self.tsd.positions['position 2'].av}")
 

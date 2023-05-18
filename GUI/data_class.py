@@ -151,13 +151,15 @@ def extract_time_stamp(_date_str: str) -> str:
     '13:45:30'
     >>> extract_time_stamp("2023-05-12")
     ''
+    >>> extract_time_stamp(' 00:02:37')
+    '00:02:37'
    """
     formats = ["%H:%M:%S", "%Y-%m-%d %H:%M:%S"]
     time_stamp = ""
 
     for fmt in formats:
         try:
-            datetime_obj = dt.datetime.strptime(_date_str, fmt)
+            datetime_obj = dt.datetime.strptime(_date_str.strip(), fmt)
             time_stamp = datetime_obj.strftime("%H:%M:%S")
             break
         except ValueError:
@@ -166,7 +168,7 @@ def extract_time_stamp(_date_str: str) -> str:
 
 
 # TODO: convert DataPacket class to set of functions
-def convert_csv_row_to_packet(csv_row_list: list) -> dict:
+def convert_csv_row_to_packet(csv_row_list: list[str]) -> dict:
     """
     Convert a list from the csv save file into a dictionary, similar
     to the data packet received from the sensor.  If the list of
@@ -187,6 +189,8 @@ def convert_csv_row_to_packet(csv_row_list: list) -> dict:
     >>> convert_csv_row_to_packet(['2023-03-07 00:02:53', 'position 1', '15746.0', '29.0', '40.2', '0.0', '0'])
     {'packet_id': 0, 'position': 'position 1', 'time': '00:02:53', 'CPUTemp': 40.2, 'SensorTemp': 0.0, 'OryConc': 15746.0, 'AV': 29.0}
     """
+    # incase there was any white space in the file, strip all white space first
+
     pkt = {}
     if isint(csv_row_list[indices["packet_id"]]):
         # use local function to test if packet id can be converted
@@ -202,9 +206,7 @@ def convert_csv_row_to_packet(csv_row_list: list) -> dict:
     # for time strip the date from it, split at the space between
     # the data and time and take the time at the end
     pkt["time"] = extract_time_stamp(csv_row_list[indices["time"]])
-    # print(csv_row)
-    # print(csv_row[indices["time"]].split(" "))
-    # print(f"load csv row: {pkt}")
+
     for obj in ["CPUTemp", "SensorTemp", "OryConc"]:
         if isfloat(csv_row_list[indices[obj]]):
             pkt[obj] = float(csv_row_list[indices[obj]])
@@ -313,20 +315,20 @@ class DeviceData:
         self.settings_checked = False
 
     def save_summary_data(self, csv_writer: csv.writer, position: str):
-        # print(f"save position summary data")
+        print(f"save position summary data")
         for i in range(len(self.packet_ids)):
             # make row to write
             if len(self.av) > 0:
-                row = [self.time_series[i],
+                row = [self.time_series[i].strftime("%Y-%m-%d %H:%M:%S"),
                        position, self.oryzanol[i],
                        self.av[i], self.cpu_temp[i],
                        self.sensor_temp[i], self.packet_ids[i]]
             else:
-                row = [self.time_series[i],
+                row = [self.time_series[i].strftime("%Y-%m-%d %H:%M:%S"),
                        position, self.oryzanol[i],
                        '', self.cpu_temp[i],
                        self.sensor_temp[i], self.packet_ids[i]]
-            # print(row)
+            print(f"row: {row}")
             csv_writer.writerow(row)
 
     def update_date(self, date):
@@ -394,7 +396,8 @@ class DeviceData:
             self.sensor_temp.insert(insert_idx, np.nan)
 
         self.packet_ids.insert(insert_idx, int(data_pkt["packet_id"]))
-
+        print(f"packet time: {data_pkt['time']}")
+        print(f"packet: {data_pkt}")
         if len(data_pkt["time"]) <= 8:
             time = dt.datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
             time = dt.datetime.combine(self.today, time)
@@ -466,6 +469,7 @@ class TimeStreamData:
         self.positions = {}
         # this is needed to make the datetime in the data
         self.today = dt.datetime.today().strftime("%Y-%m-%d")
+        print(f"dt device data: {self.today}")
         # message_id to prevent repeately asking for the same data
         self.already_asked_for_data = False
         # make these in make_save_files() has to make these on new days also
@@ -515,7 +519,7 @@ class TimeStreamData:
             for row in csv_reader:
                 # print(f"line count: {line_count}, len row: {len(row)}")
                 if line_count != 0 and len(row) >= 7:
-                    # print(f"load row: {row}")
+                    print(f"load row: {row}")
                     self.add_csv_data(row)
                 line_count += 1
 
@@ -558,7 +562,9 @@ class TimeStreamData:
         """ Add data from a csv row, this will be saved data """
         # position = csv_row[indices["position"]].strip()
         data_pkt = convert_csv_row_to_packet(csv_row)
-        # print(f"adding data_pkt: {data_pkt}")
+        print(f"adding data_pkt: {data_pkt}")
+        if "position" not in data_pkt:
+            return  # ignore not proper data_pkt
         position = data_pkt["position"]
         # print(f"adding csv data for position: {position}")
         if position:
@@ -572,7 +578,7 @@ class TimeStreamData:
     def add_data(self, data_pkt: dict, save_data_pkt=True):
         # TODO: fix this, its a mess
         print(f"data_pkt: {data_pkt}")
-        # print(f"dt3: {dt.datetime.now()}")
+        print(f"dt3: {dt.datetime.now()}")
         logger.debug(f"adding data packet: {data_pkt}")
         if type(data_pkt) is not dict:
             return 204  # TODO: sometimes an int gets in here.  look at sensor code to fix
@@ -586,6 +592,7 @@ class TimeStreamData:
             print("No 'device' or 'position' in data_pkt")
             return 200
         if position not in self.positions:
+            print(f"adding device2: {position}")
             self.add_device(position)
 
         device_data = self.positions[position]  # type: DeviceData
@@ -594,6 +601,7 @@ class TimeStreamData:
         packet_date = data_pkt["date"]
         packet_datetime = dt.datetime.strptime(packet_date, "%Y-%m-%d").date()
         current_date = device_data.today
+        print(f"dt4: {current_date}")
         if packet_date != str(current_date):
             print(f"This is a different day. Today {current_date}, packet date {packet_date}")
             # test if date advanced at midnight and files need to update
@@ -626,13 +634,12 @@ class TimeStreamData:
 
         if "Raw_data" in data_pkt and save_data_pkt:
             self.master_graph.update_spectrum(data_pkt["Raw_data"], position)
-
         if not self.update_after:
             self.update_after = self.root_app.after(500, lambda: self.update_graph(position))
 
         if save_data_pkt:  # this is live data
             # TODO: update the ory conc value in this
-            print(f"saving data: {data_pkt['packet_id']}")
+            # print(f"saving data: {data_pkt['packet_id']}")
             self.save_data(data_pkt)
             self.root_app.info.check_in(position)
             # only update the info frame if the is newer data than
