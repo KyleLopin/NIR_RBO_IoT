@@ -4,7 +4,7 @@
 Test the data_class.TimeStreamData class
 """
 
-__author__ = "Kyle Vitautus Lopin"
+__author__ = "Kyle Vitautas Lopin"
 
 # standard libraries
 import datetime
@@ -27,24 +27,33 @@ sys.path.append(os.path.join('..', 'GUI'))
 from GUI import data_class
 from GUI import main_gui
 
-logging.basicConfig(filename=f'log/test.log',
-                    format="%(asctime)-15s %(name)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
-                    datefmt='%m/%d/%Y %I:%M:%S.%f %p',
-                    filemode='a+',
-                    level=logging.DEBUG)
+# Test and run log files are different, but messages are the same
+logger = logging.getLogger('my_logger')
+logger.setLevel(logging.DEBUG)
+
+today = dt.datetime.today().strftime("%Y-%m-%d")
+# put logs in the log folder for the tests, not unit_tests
+test_log_handler = logging.FileHandler(f'../log/{today}.log')
+test_log_handler.setLevel(logging.DEBUG)
+format = logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s - line: %(lineno)d - %(message)s')
+test_log_handler.setFormatter(format)
+logger.addHandler(test_log_handler)
 
 __location__ = os.path.realpath(
     os.path.join(os.getcwd(), os.path.dirname(__file__)))
 PROJECT_DIR = os.path.abspath(os.path.join(__location__, os.pardir, 'GUI'))
 
 TEST_DATE = "2022-11-18"
+MOCK_DATE = dt.datetime(2022, 11, 18)
+
 NEXT_DATE = "2022-11-19"
+DATE_STR_FORMAT = "%Y-%m-%d"
 # SAVED_FILE_PATH = os.path.join('..', 'GUI', 'data', f"{TEST_DATE}.csv")
 SAVED_FILE_PATH = os.path.join(PROJECT_DIR, 'data', f"{TEST_DATE}.csv")
 TOMORROW_FILE_PATH = os.path.join(PROJECT_DIR, 'data', f"{NEXT_DATE}.csv")
-TEMPLATE_FILE = os.path.join(__location__, "template_short.csv")
-SORTED_TEMPLATE_FILE = os.path.join(__location__, "sorted_template_short.csv")
-MISSING_AV_FILE = os.path.join(__location__, "test_mixed_av.csv")
+TEMPLATE_FILE = os.path.join(__location__, "data_files/template_short.csv")
+SORTED_TEMPLATE_FILE = os.path.join(__location__, "data_files/sorted_template_short.csv")
+MISSING_AV_FILE = os.path.join(__location__, "data_files/test_mixed_av.csv")
 
 DATA_PKT1 = b'{"time": "09:55:22", "date": "2022-11-18", "packet_id": 1, ' \
             b'"device": "position 2", "mode": "live", "OryConc": -20139, ' \
@@ -173,7 +182,7 @@ MISSING_PACKETS = [4, 5, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18,
 print(DATA_PKT1)
 
 
-def get_data_file(path=SAVED_FILE_PATH) -> str:
+def get_data_file(file_path=SAVED_FILE_PATH) -> str:
     """
     Get the file where the data for the tests should be saved at and return
     it as a string
@@ -181,38 +190,38 @@ def get_data_file(path=SAVED_FILE_PATH) -> str:
     Returns (str): string of data saved in the saved data file
 
     """
-    if os.path.isfile(path):
-        with open(path, 'r', encoding="utf-8") as _file:
+    print(f"getting file from: {file_path}")
+    if os.path.isfile(file_path):
+        with open(file_path, 'r', encoding="utf-8") as _file:
             return _file.read()
     else:
         return "No file yet"
 
 
-@freeze_time(TEST_DATE)
+# @freeze_time(TEST_DATE)
 class TestAddDataPacket(unittest.TestCase):
     """
     Test that on start up of the data_class.TimeStreamData that the
     classes add_data_pkt works properly for good data and also data that
     should be ignored, and it will test for a date change.
     """
-    @freeze_time(TEST_DATE)
+    # @freeze_time(TEST_DATE)
     def setUp(self) -> None:
         """
         Check that the tearDown method is clearing the saved files that are made,
         initialize the data_class.TimeStreamData class and save to self.
         """
-        print("Setting up")
-        print(f"cwd: {os.getcwd()}")
-        print(f"path: {sys.path}")
         if get_data_file() != "No file yet":  # make sure not file yet for this testcase
             self.tearDown()
         self.assertEqual(get_data_file(), "No file yet",
                          msg="File is not being deleted between tests correctly")
-        print(f"get file 1: {get_data_file()}")
-        with mock.patch("main_gui.RBOGUI", new_callable=mock.PropertyMock,
-                        return_value=True) as mocked_gui:
-            self.tsd = data_class.TimeStreamData(mocked_gui)
-            print(f"get file 2: {get_data_file()}")
+        with mock.patch('datetime.datetime') as mock_datetime:
+            mock_datetime.now.return_value = MOCK_DATE
+            mock_datetime.today.return_value = MOCK_DATE
+
+            with mock.patch("main_gui.RBOGUI", new_callable=mock.PropertyMock,
+                            return_value=True) as mocked_gui:
+                self.tsd = data_class.TimeStreamData(mocked_gui)
 
     def tearDown(self) -> None:
         """
@@ -428,34 +437,39 @@ class TestAddPos1DataPacket(unittest.TestCase):
         if os.path.exists(SAVED_FILE_PATH):
             os.remove(SAVED_FILE_PATH)
 
+    @freeze_time(TEST_DATE)
     def test_add_av(self):
-        print("keys: ", self.tsd.positions.keys())
-        data_dict = json.loads(DATA_PKT_POSITION_1)
-        returned_value = self.tsd.add_data(data_dict)
-        print(returned_value)
-        print(self.tsd.positions.keys())
-        device_data = \
-            self.tsd.positions["position 1"]  # type: GUI.data_class.DeviceData
-        # av_data = \
-        #     self.tsd.positions["av"]  # type: GUI.data_class.DeviceData
-        print(f"device data: {device_data.time_series}")
-        print(f"device data: {device_data.oryzanol}")
-        # print(f"av data: {av_data}")
-        print(get_data_file())
-        self.assertEqual(returned_value, 0,
-                         msg="add_data is not returning a zero but an error code")
-        self.assertListEqual(device_data.time_series,
-                             [dt.datetime(2022, 11, 18, 23, 6, 13)],
-                             msg="add_data is not saving a single time_series "
-                                 "correctly")
-        self.assertListEqual(device_data.oryzanol, [-20648.0],
-                             msg="add_data is not saving a single oryzanol correctly")
-        self.assertListEqual(device_data.av, [10.0],
-                             msg="add_data is not saving a single oryzanol correctly")
-        self.assertEqual(get_data_file(),
-                         "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
-                         "2022-11-18 23:06:13, position 1, -20648, 10, 47.24, 0, 46, \n",
-                         msg=f"Saved data file is not right for test_add_av")
+        with self.assertLogs() as captured_logs:
+            # print("keys: ", self.tsd.positions.keys())
+            data_dict = json.loads(DATA_PKT_POSITION_1)
+            returned_value = self.tsd.add_data(data_dict)
+            # print(returned_value)
+            # print(self.tsd.positions.keys())
+            device_data = \
+                self.tsd.positions["position 1"]  # type: GUI.data_class.DeviceData
+            # av_data = \
+            #     self.tsd.positions["av"]  # type: GUI.data_class.DeviceData
+            # print(f"device data: {device_data.time_series}")
+            # print(f"device data: {device_data.oryzanol}")
+            # print(f"av data: {av_data}")
+            # print(get_data_file())
+            self.assertEqual(returned_value, 0,
+                             msg="add_data is not returning a zero but an error code")
+            self.assertListEqual(device_data.time_series,
+                                 [dt.datetime(2022, 11, 18, 23, 6, 13)],
+                                 msg="add_data is not saving a single time_series "
+                                     "correctly")
+            self.assertListEqual(device_data.oryzanol, [-20648.0],
+                                 msg="add_data is not saving a single oryzanol correctly")
+            self.assertListEqual(device_data.av, [10.0],
+                                 msg="add_data is not saving a single oryzanol correctly")
+            self.assertEqual(get_data_file(),
+                             "time, position, OryConc, AV, CPUTemp, SensorTemp, packet_id\n"
+                             "2022-11-18 23:06:13, position 1, -20648, 10, 47.24, 0, 46, \n",
+                             msg=f"Saved data file is not right for test_add_av")
+        for log in captured_logs.records:
+            print('===')
+            print(log.getMessage())
 
 
 @freeze_time(TEST_DATE)
@@ -579,7 +593,6 @@ class TestUpdateGraph(unittest.TestCase):
         self.assertEqual(pos, "position 2")
 
 
-
 @freeze_time(TEST_DATE)
 class TestLoadPreviousData(unittest.TestCase):
     @classmethod
@@ -589,6 +602,9 @@ class TestLoadPreviousData(unittest.TestCase):
         into the data folder for the data_class to use.
         """
         shutil.copyfile(TEMPLATE_FILE, SAVED_FILE_PATH)
+        with mock.patch('data_class.dt.datetime') as mock_datetime:
+            mock_datetime.now.return_value = MOCK_DATE
+            mock_datetime.today.return_value = MOCK_DATE
 
     def test_load_previous_data(self):
         """ TimeStreamData will attempt to load previous data"""
@@ -599,6 +615,7 @@ class TestLoadPreviousData(unittest.TestCase):
             self.assertListEqual(self.tsd.positions['position 2'].av, [-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0])
 
 
+@freeze_time(TEST_DATE)
 class TestLoadMixedData(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -607,6 +624,9 @@ class TestLoadMixedData(unittest.TestCase):
         into the data folder for the data_class to use.
         """
         shutil.copyfile(MISSING_AV_FILE, SAVED_FILE_PATH)
+        with mock.patch('datetime.datetime') as mock_datetime:
+            mock_datetime.now.return_value = MOCK_DATE
+            mock_datetime.today.return_value = MOCK_DATE
 
     def test_load_previous_data_w_missing_av(self):
         """ TimeStreamData will attempt to load previous data"""
@@ -614,8 +634,20 @@ class TestLoadMixedData(unittest.TestCase):
                         return_value=True) as mocked_gui:
             self.tsd = data_class.TimeStreamData(mocked_gui)
             print(self.tsd.positions)
-            # self.assertListEqual(self.tsd.positions['position 2'].av, [-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0])
-            print(f"av: {self.tsd.positions['position 2'].av}")
+            self.assertListEqual(self.tsd.positions['position 2'].av, [-1.0, -2.0, -3.0, -4.0, -5.0, -6.0, -7.0])
+            # print(f"av: {self.tsd.positions['position 2'].av}")
+
+
+class TestLogger(unittest.TestCase):
+    """
+    Test that the logger is saving messages to the
+    log file correctly, this will be in the test folder log not
+    in the GUI log folder
+    """
+
+
+    def test_logger(self):
+        pass
 
 
 if __name__ == '__main__':

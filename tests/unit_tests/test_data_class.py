@@ -8,6 +8,8 @@ the GUI folder
 __author__ = "Kyle Vitautas Lopin"
 
 # standard libraries
+from datetime import datetime
+import logging
 import os
 import sys
 import unittest
@@ -16,6 +18,18 @@ from unittest import mock
 sys.path.append(os.path.join('..', '..', 'GUI'))
 # local files
 from GUI import data_class
+
+# Test and run log files are different, but messages are the same
+logger = logging.getLogger('my_logger')
+logger.setLevel(logging.DEBUG)
+
+today = datetime.today().strftime("%Y-%m-%d")
+# put logs in the log folder for the tests, not unit_tests
+test_log_handler = logging.FileHandler(f'../log/{today}.log')
+test_log_handler.setLevel(logging.DEBUG)
+format = logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s - line: %(lineno)d - %(message)s')
+test_log_handler.setFormatter(format)
+logger.addHandler(test_log_handler)
 
 
 class TestDataClassFunctions(unittest.TestCase):
@@ -45,7 +59,7 @@ class TestDataClassFunctions(unittest.TestCase):
         print(f"output: {output}")
         expected = {'packet_id': 0, 'position': 'position 1', 'time': '00:02:53', 'CPUTemp': 40.2,
                     'SensorTemp': 0.0, 'OryConc': 15746.0, 'AV': 29.0}
-        self.assertEquals(output, expected)
+        self.assertEqual(output, expected)
         # test a line that caused an error
         _input = [' 00:02:37', ' position 2', '-164265.5', '-2', '46.2', '42.9', '1', '']
         output = data_class.convert_csv_row_to_packet(_input)
@@ -76,3 +90,4 @@ class TestDataClassFunctions(unittest.TestCase):
         self.assertEquals(data_class.isfloat("1"), True)
         self.assertEquals(data_class.isfloat("b"), False)
         self.assertEquals(data_class.isfloat("1.543"), True)
+
