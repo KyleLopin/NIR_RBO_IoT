@@ -19,7 +19,8 @@ from GUI import data_class
 DATA_POS2_1 = {'time': '09:55:22', 'date': '2022-11-18', 'packet_id': 1, 'device': 'position 2',
                'mode': 'live', 'OryConc': -20139, 'CPUTemp': '48.31', 'SensorTemp': 0, 'AV': -1}
 DATA_PKT1 = {'time': '09:55:22', 'date': '2022-11-18', 'packet_id': 1, 'device': 'position 2',
-               'mode': 'live', 'OryConc': -10000, 'CPUTemp': '48.31', 'SensorTemp': 0, 'AV': 10}
+             'mode': 'live', 'OryConc': -10000, 'CPUTemp': '48.31', 'SensorTemp': 0, 'AV': 10}
+
 
 class TestAddDataPkt(unittest.TestCase):
     """ Test that the DeviceData class in data_class
