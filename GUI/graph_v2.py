@@ -2,7 +2,8 @@
 
 """
 Version 2 of the graph programs to display
-IoT sensor data
+IoT sensor data.  Will embed a pyplot in a tkinter Frame,
+will return a tk.Frame
 """
 
 __author__ = "Kyle Vitautas Lopin"
@@ -24,6 +25,7 @@ from matplotlib import pyplot as plt
 
 # local files
 import global_params
+from displays.collapsible_frame import CollapsibleFrame
 plt.style.use("seaborn")
 
 __location__ = os.path.realpath(
@@ -64,6 +66,7 @@ class PyPlotFrame(tk.Frame):
                  ylabel=None, xlim=None,
                  ylim=None,
                  ylim_buttons: tuple[str, str, str] = None,
+                 rhs_buttons: tuple[str, str, str] = None,
                  hlines: list = None,
                  use_log=False):
         tk.Frame.__init__(self, master=parent)
@@ -71,16 +74,31 @@ class PyPlotFrame(tk.Frame):
         self.ylim = ylim
         self.config(bg='white')
 
-        # make buttons to change y axis limits if used
+        # make buttons to change y-axis limits if used
         if ylim_buttons:
-            button_frame = tk.Frame(self)
+            # button_frame = tk.Frame(self)
+            button_frame = CollapsibleFrame(self,
+                                            closed_button_text="Show y axis options",
+                                            open_button_text="Collapse options",
+                                            collapsed=False, side="left")
             for button_opt in ylim_buttons:
                 button_text = f"{button_opt[0]}\n({button_opt[1]:,}-{button_opt[2]:,})"
                 tk.Button(button_frame, text=button_text,
                           width=15,
                           command=lambda a=button_opt[1], b=button_opt[2]: self.update_ylim(a, b)
                           ).pack(side=tk.TOP, pady=10)
-            button_frame.pack(side=tk.LEFT)
+            button_frame.pack(side="left")
+
+        # if ylim_buttons:
+        #     collapse_frame = CollapsibleFrame(self, button_text="Show y axis options")
+        #
+        #     for button_opt in ylim_buttons:
+        #         button_text = f"{button_opt[0]}\n({button_opt[1]:,}-{button_opt[2]:,})"
+        #         tk.Button(collapse_frame.collapsible_frame, text=button_text,
+        #                   width=15,
+        #                   command=lambda a=button_opt[1], b=button_opt[2]: self.update_ylim(a, b)
+        #                   ).pack(side=tk.TOP, pady=10)
+        #     collapse_frame.pack(side=tk.RIGHT)
 
         # routine to make and embed the matplotlib graph
         self.figure = mp.figure.Figure(figsize=fig_size)

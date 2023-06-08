@@ -10,17 +10,17 @@ __author__ = "Kyle Vitatus Lopin"
 # standard libraries
 import csv
 import datetime as dt
-from dateutil.parser import parse
 import json
 import logging
 import os
 import shutil
-import sys
 import tkinter as tk  # type hinting
 
 # installed libraries
 from codetiming import Timer
-import numpy as np
+from numpy import array, nan, searchsorted
+from psutil import cpu_count, getloadavg, virtual_memory
+from psutil._common import bytes2human
 
 # sys.path.append(os.getcwd())
 # sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
@@ -30,7 +30,9 @@ import global_params
 import helper_functions
 import model
 
-logger = logging.getLogger(__name__)
+# Test and run log files are different, but messages are the same
+logger = logging.getLogger('my_logger')
+logger.setLevel(logging.DEBUG)
 
 MAX_DATA_PTS = 600
 __location__ = os.path.realpath(
@@ -65,10 +67,21 @@ DATA_PACKET_KEYS = ["time", "device", "CPUTemp", "SensorTemp", "packet_id"]
 SAVED_DATA_KEYS = DATA_PACKET_KEYS.extend(["AV", "OryConc"])
 RAW_DATA_HEADERS = ["time", "device", "packet_id"]
 RAW_DATA_HEADERS.extend([str(i) for i in range(1350, 1651)])
+CPU_COUNT = cpu_count()
 
 indices = dict()
 for header in FILE_HEADER:
     indices[header] = FILE_HEADER.index(header)
+
+
+def log_cpu_ram_usage():
+    """ Write into the logger the cpu and RAM usage """
+    print(getloadavg(), cpu_count())
+    cpu_loads = [x / CPU_COUNT for x in getloadavg()]
+    virt_mem = virtual_memory()
+    ram_usage = bytes2human(virt_mem.used)
+    logger.info(f"cpu loads: {cpu_loads}")
+    logger.info(f"ram percentage: {virt_mem.percent}, ram used: {ram_usage}")
 
 
 def isfloat(str_to_test: str) -> bool:
@@ -93,7 +106,7 @@ def isfloat(str_to_test: str) -> bool:
     try:
         float(str_to_test)
         return True
-    except:
+    except ValueError:
         return False
 
 
@@ -119,7 +132,7 @@ def isint(str_to_test: str) -> bool:
     try:
         int(str_to_test)
         return True
-    except:
+    except ValueError:
         return False
 
 
@@ -186,8 +199,10 @@ def convert_csv_row_to_packet(csv_row_list: list[str]) -> dict:
     -------------
     >>> convert_csv_row_to_packet(['', '', '', '', '', '', '', ''])
     {}
-    >>> convert_csv_row_to_packet(['2023-03-07 00:02:53', 'position 1', '15746.0', '29.0', '40.2', '0.0', '0'])
-    {'packet_id': 0, 'position': 'position 1', 'time': '00:02:53', 'CPUTemp': 40.2, 'SensorTemp': 0.0, 'OryConc': 15746.0, 'AV': 29.0}
+    >>> convert_csv_row_to_packet(['2023-03-07 00:02:53', 'position 1', '15746.0',
+    '29.0', '40.2', '0.0', '0'])
+    {'packet_id': 0, 'position': 'position 1', 'time': '00:02:53', 'CPUTemp': 40.2,
+    'SensorTemp': 0.0, 'OryConc': 15746.0, 'AV': 29.0}
     """
     # incase there was any white space in the file, strip all white space first
 
@@ -360,7 +375,7 @@ class DeviceData:
 
             # print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
         elif self.use_av:
-            self.av.insert(insert_idx, np.nan)
+            self.av.insert(insert_idx, nan)
 
         if "device" in data_pkt:  # this is the code in the sensors still
             position = data_pkt["device"].strip()
@@ -388,12 +403,12 @@ class DeviceData:
             temp = float(data_pkt["CPUTemp"])
             self.cpu_temp.insert(insert_idx, temp)
         else:
-            self.cpu_temp.insert(insert_idx, np.nan)
+            self.cpu_temp.insert(insert_idx, nan)
         if "SensorTemp" in data_pkt:
             sensor_temp = float(data_pkt["SensorTemp"])
             self.sensor_temp.insert(insert_idx, sensor_temp)
         else:
-            self.sensor_temp.insert(insert_idx, np.nan)
+            self.sensor_temp.insert(insert_idx, nan)
 
         self.packet_ids.insert(insert_idx, int(data_pkt["packet_id"]))
         print(f"packet time: {data_pkt['time']}")
@@ -428,10 +443,10 @@ class DeviceData:
         else:
             # print(f"No packet id, abondoning data")
             return None
-        _sort_idx = np.searchsorted(np.array(self.packet_ids), _pkt_id)
+        _sort_idx = searchsorted(array(self.packet_ids), _pkt_id)
         #         print(f"{_pkt_id in self.packet_ids}, pkt ids: {self.packet_ids}")
         if _pkt_id in self.packet_ids:
-            # print(f"Already recieved pkt id: {_pkt_id}")
+            # print(f"Already received pkt id: {_pkt_id}")
             return None  # this packet id is already present
         # print(f"sort idx: {_sort_idx}, len packet id: {len(self.packet_ids)}")
         mode = None
@@ -457,19 +472,21 @@ class TimeStreamData:
     def __init__(self, root_app):
         # print("Init Time Stream Data")
         # print(f"FILE HEADER: {FILE_HEADER}")
-        print(f"dt2: {dt.datetime.now()}")
+        logging.debug(f"dt2: {dt.datetime.now()}")
         self.master_graph = root_app.graphs
         self.connection = None
         devices = DEVICES[:]  # copy to append to it
         devices.append("AV")
         self.models = model.Models(devices)
         # this is not pretty
+        # TODO: remove dependance inject, this uses after and the info frame
+        # Move afters to main, and import info frame directly
         self.root_app = root_app  # type: tk.Tk
         self.update_after = None
         self.positions = {}
         # this is needed to make the datetime in the data
         self.today = dt.datetime.today().strftime("%Y-%m-%d")
-        print(f"dt device data: {self.today}")
+        logging.debug(f"dt device data: {self.today}")
         # message_id to prevent repeately asking for the same data
         self.already_asked_for_data = False
         # make these in make_save_files() has to make these on new days also
@@ -499,7 +516,6 @@ class TimeStreamData:
         today = dt.datetime.today().strftime("%Y-%m-%d")
         data_path = os.path.join(__location__, "data")
         self.save_file = os.path.join(data_path, f"{today}.csv")
-        # print("save file", self.save_file)
         self.save_raw_data_file = os.path.join(data_path, f"{today}_raw_data.csv")
         try:  # the factory computer wants a different directory
             if os.path.isdir(FACTORY_DIR):
@@ -542,7 +558,7 @@ class TimeStreamData:
         self.connection = conn
 
     def add_device(self, position):
-        # logging.info(f"adding device: {position} to data_class")
+        logging.info(f"adding device: {position} to data_class")
         print(f"adding device: {position} to data_class")
         if position not in global_params.POSITIONS:
             # see if it was send as position and fix it
@@ -577,9 +593,9 @@ class TimeStreamData:
     @Timer(name="add_data", text="Time: {:.4f}", logger=logging.debug)
     def add_data(self, data_pkt: dict, save_data_pkt=True):
         # TODO: fix this, its a mess
-        print(f"data_pkt: {data_pkt}")
-        print(f"dt3: {dt.datetime.now()}")
-        logger.debug(f"adding data packet: {data_pkt}")
+        # print(f"data_pkt: {data_pkt}")
+        # print(f"dt3: {dt.datetime.now()}")
+        logger.info(f"adding data packet: {data_pkt}")
         if type(data_pkt) is not dict:
             return 204  # TODO: sometimes an int gets in here.  look at sensor code to fix
         # if data is from a database, it has to be converted first
@@ -601,7 +617,7 @@ class TimeStreamData:
         packet_date = data_pkt["date"]
         packet_datetime = dt.datetime.strptime(packet_date, "%Y-%m-%d").date()
         current_date = device_data.today
-        print(f"dt4: {current_date}")
+        # print(f"dt4: {current_date}")
         if packet_date != str(current_date):
             print(f"This is a different day. Today {current_date}, packet date {packet_date}")
             # test if date advanced at midnight and files need to update
@@ -612,7 +628,7 @@ class TimeStreamData:
             # elif packet_datetime == device_data.today - timedelta(days=1):
             else:
                 # old data was received, just ignore it rather than figure out if its needed
-                print(f"packet data: {packet_date}, current date: {current_date}")
+                # print(f"packet data: {packet_date}, current date: {current_date}")
                 return 201  # testing unit code
         # add the date to the individual sensor data class
         data_pkt = device_data.add_data_pkt(data_pkt, self.models)
@@ -627,7 +643,7 @@ class TimeStreamData:
             self.already_asked_for_data = True
             self.root_app.after(5*60000, self.clear_ask_for_data_flag)
             missing_pkt = self.find_next_missing_pkts(device_data, int(data_pkt["packet_id"]))
-            print(f"ask for packet2: {missing_pkt} from position: {position}")
+            logging.debug(f"ask for packets: {missing_pkt} from position: {position}")
             if self.connection:  # for testing or offline
                 self.connection.ask_for_stored_data(position, missing_pkt)
                 device_data.ask_for_missing_packets = False
@@ -645,6 +661,8 @@ class TimeStreamData:
             # only update the info frame if the is newer data than
             # the data saved
             self.root_app.info.update_current_info(data_pkt, position)
+        if logger.isEnabledFor(logging.INFO):  # only get statitics if log is set high enough
+            log_cpu_ram_usage()
         return 0
 
     def update_rolling_samples(self, n_samples):
@@ -689,7 +707,7 @@ class TimeStreamData:
         data_list.append('\n')
         # now write a row to the file
         try:
-            with open(self.save_file, 'a') as _file:
+            with open(self.save_file, 'a', encoding="utf8") as _file:
                 _file.write(', '.join(data_list))
         except Exception as _error:
             # do something here to save the list and write later
@@ -704,7 +722,7 @@ class TimeStreamData:
                     data_list2.append(", ")
             if "Raw_data" in data_pkt:
                 data_list2.extend([str(i) for i in data_pkt["Raw_data"]])
-                with open(self.save_raw_data_file, 'a') as _file:
+                with open(self.save_raw_data_file, 'a', encoding="utf8") as _file:
                     _file.write(', '.join(data_list2))
                     if "\n" not in data_list2[-1]:
                         _file.write("\n")
@@ -749,12 +767,12 @@ class TimeStreamData:
 
         """
         try:
-            with open(filepath, 'x') as _file:
+            with open(filepath, 'x', encoding="utf8") as _file:
                 # use 'x' to try to make the file, if it exists
                 # it will raise an error and just pass
                 _file.write(', '.join(header))
                 _file.write('\n')
-        except Exception as error:
+        except FileExistsError as error:
             print(f"Error making file: {filepath}, error: {error}")
 
     def __str__(self):

@@ -1,10 +1,12 @@
-# Copyright (c) 2022 Kyle Lopin (Naresuan University) <kylel@nu.ac.th>
+# Copyright (c) 2022-3 Kyle Lopin (Naresuan University) <kylel@nu.ac.th>
 
 """
-
+Entry point for the GUI to observe the Acid value (AV) and Oryzanol
+values measured by 3 sensors in a Rice Bran Factory.  The sensors will send
+a message through MQTT with the measured values
 """
 
-__author__ = "Kyle Vitatus Lopin"
+__author__ = "Kyle Vitautas Lopin"
 
 # standard libraries
 from datetime import datetime
@@ -30,14 +32,24 @@ __location__ = os.path.realpath(
 
 DATA_HEADERS = data_class.SAVED_DATA_KEYS
 
-today = datetime.today().strftime("%Y-%m-%d")
-logger = logging.getLogger(__name__)
-log_handler = logging.FileHandler(f'log/{today}.log')
-log_handler.setLevel(logging.DEBUG)
-log_handler.setFormatter("%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s")
-logger.addHandler(log_handler)
 
-
+logger = logging.getLogger('my_logger')
+# will be called when main is called directly,
+# not when a test is run, they will have their own log files
+if not logger.hasHandlers():
+    print("setting up logger")
+    today = datetime.today().strftime("%Y-%m-%d")
+    # log_handler = logging.FileHandler(f'log/{today}.log')
+    # log_handler.setLevel(logging.DEBUG)
+    # log_handler.setFormatter("%(asctime)s %(levelname)s %(filename)s %(lineno)d  %(message)s")
+    # logger.addHandler(log_handler)
+    test_log_handler = logging.FileHandler(f'log/{today}.log')
+    test_log_handler.setLevel(logging.DEBUG)
+    format = logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s - line: %(lineno)d - %(message)s')
+    test_log_handler.setFormatter(format)
+    logger.addHandler(test_log_handler)
+logger.debug("Start of main_gui")
+print("import main")
 # logging.basicConfig(filename=f'log/{today}.log',
 #                     format="%(asctime)-15s %(levelname)-8s %(filename)s, %(lineno)d  %(message)s",
 #                     # datefmt='%m/%d/%Y %I:%M:%S %p',
