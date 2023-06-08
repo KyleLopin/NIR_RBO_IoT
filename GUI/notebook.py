@@ -49,7 +49,8 @@ class Notebook(tk.Frame):
                                           ylabel="Oryzanol Concentrations",
                                           xlabel="Time",
                                           ylim=[0, 16000],
-                                          hlines=[3500, 5000, 8000, 10000])
+                                          hlines=[3500, 5000, 8000, 10000],
+                                          ylim_buttons=global_params.ORY_GRAPH_BUTTON_OPTS)
         self.ory_plot.pack()
         self.av_plot = graph.PyPlotFrame(notebook, root_app,
                                          fig_size=(9, 4),
@@ -61,8 +62,7 @@ class Notebook(tk.Frame):
         self.temp_plot = graph.PyPlotFrame(notebook, root_app,
                                            fig_size=(9, 4),
                                            ylabel="Temperature",
-                                           xlabel="Time",
-                                           allow_zoom=True)
+                                           xlabel="Time")
         self.temp_plot.pack()
 
         # _refl_frame = tk.Frame(notebook)
@@ -120,20 +120,28 @@ class Notebook(tk.Frame):
 
     def update_temp(self, time, cpu_temp,
                     sensor_temp, _position):
+        print(f"Update temp with calls: {time}, {cpu_temp}, {sensor_temp}, {_position}")
         sensor_mask = np.ma.masked_not_equal(np.array(sensor_temp), 0.0)
 
         self.temp_plot.update_graph(time, cpu_temp,
                                     label=f"CPU {_position}",
                                     show_mean=False)
-        # print(sensor_mask)
+        # print(sensor_mask.mask)
         # print(np.array(time)[sensor_mask.mask])
-        if len(time) != len(sensor_mask.mask) or \
-                len(sensor_temp) != len(sensor_mask.mask):
-            print("Error in lent of sensor temp mask")
-            print(f"len time {len(np.array(time)[sensor_mask.mask])}"
-                  f" len temp {len(np.array(sensor_temp)[sensor_mask.mask])}")
-            print(np.array(time)[sensor_mask.mask])
-            print(np.array(sensor_temp)[sensor_mask.mask])
+        # print(f"time: {type(time)}")
+        # print(f"temp: {type(sensor_temp)}")
+        # print(f"mask: {type(sensor_mask.mask)}")
+        # print(sensor_mask.count())
+        # print(sensor_mask.count_masked)
+        # if len(time) != len(sensor_mask.mask) or \
+        #         len(sensor_temp) != len(sensor_mask.mask):
+        #     print("Error in length of sensor temp mask")
+        #     with open("notebook_debug.dump", 'a') as _file:
+        #         _file.write(f"sensor temp: {sensor_temp}")
+        #         _file.write(f"sensor mask: {sensor_mask.mask}")
+            # print(np.array(time)[sensor_mask.mask])
+            # print(np.array(sensor_temp)[sensor_mask.mask])
+
         self.temp_plot.update_graph(np.array(time)[sensor_mask.mask],
                                     np.array(sensor_temp)[sensor_mask.mask],
                                     label=f"Sensor {_position}",

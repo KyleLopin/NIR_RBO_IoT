@@ -16,8 +16,10 @@ from unittest import mock
 import freezegun
 
 # local files
-sys.path.append(os.path.join('..', 'GUI'))
+# sys.path.append(os.path.join('..', 'GUI'))  # in context
+from context import GUI  # add the app files to teh path
 from GUI import data_class
+
 
 LOAD_DATE = "2023-03-07"
 

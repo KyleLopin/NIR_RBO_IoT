@@ -14,19 +14,25 @@ import json
 import logging
 import os
 import shutil
-import sys
-import tkinter as tk  # typehinting
+import tkinter as tk  # type hinting
 
 # installed libraries
-import numpy as np
+from codetiming import Timer
+from numpy import array, nan, searchsorted
+from psutil import cpu_count, getloadavg, virtual_memory
+from psutil._common import bytes2human
 
 # sys.path.append(os.getcwd())
-sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
-print(sys.path)
+# sys.path.append('/Users/kylesmac/PycharmProjects/NIR_ROB/GUI')
+# print(sys.path)
 # local files
 import global_params
 import helper_functions
 import model
+
+# Test and run log files are different, but messages are the same
+logger = logging.getLogger('my_logger')
+logger.setLevel(logging.DEBUG)
 
 MAX_DATA_PTS = 600
 __location__ = os.path.realpath(
@@ -61,41 +67,72 @@ DATA_PACKET_KEYS = ["time", "device", "CPUTemp", "SensorTemp", "packet_id"]
 SAVED_DATA_KEYS = DATA_PACKET_KEYS.extend(["AV", "OryConc"])
 RAW_DATA_HEADERS = ["time", "device", "packet_id"]
 RAW_DATA_HEADERS.extend([str(i) for i in range(1350, 1651)])
+CPU_COUNT = cpu_count()
 
 indices = dict()
 for header in FILE_HEADER:
     indices[header] = FILE_HEADER.index(header)
 
 
-# def mean_depr(_list: list):
-#     log_deprecation_violation("mean_depr called")
-#     sum = 0
-#     for num in _list:
-#         sum += int(num)
-#     return sum / len(_list)
-
-
-# def divide_depr(list1: list, list2: list):
-#     log_deprecation_violation("divide_depr called")
-#     result = []
-#     for num1, num2 in zip(list1, list2):
-#         result.append(float(num1) / float(num2))
-#     return result
+def log_cpu_ram_usage():
+    """ Write into the logger the cpu and RAM usage """
+    print(getloadavg(), cpu_count())
+    cpu_loads = [x / CPU_COUNT for x in getloadavg()]
+    virt_mem = virtual_memory()
+    ram_usage = bytes2human(virt_mem.used)
+    logger.info(f"cpu loads: {cpu_loads}")
+    logger.info(f"ram percentage: {virt_mem.percent}, ram used: {ram_usage}")
 
 
 def isfloat(str_to_test: str) -> bool:
+    """
+    Test if the argument passed in can be converted to an int
+
+    Args:
+        str_to_test (str): string to test
+
+    Returns:
+        True if the argument can be converted to int, else False
+
+    Test
+    --------------
+    >>> isfloat("1")
+    True
+    >>> isfloat("b")
+    False
+    >>> isfloat("1.543")
+    True
+    """
     try:
         float(str_to_test)
         return True
-    except:
+    except ValueError:
         return False
 
 
 def isint(str_to_test: str) -> bool:
+    """
+    Test if the argument passed in can be converted to an int
+
+    Args:
+        str_to_test (str): string to test
+
+    Returns:
+        True if the argument can be converted to int, else False
+
+    Test
+    --------------
+    >>> isint("1")
+    True
+    >>> isint("b")
+    False
+    >>> isint("1.543")
+    False
+    """
     try:
         int(str_to_test)
         return True
-    except:
+    except ValueError:
         return False
 
 
@@ -104,25 +141,92 @@ def log_deprecation_violation(msg):
         log_file.write(msg)
 
 
+def extract_time_stamp(_date_str: str) -> str:
+    """
+    Test if the input string has a valid time format, either "%H:%M:%S", or
+    "%Y-%m-%d %H:%M:%S" and return just the time stamp, or an empty string if
+    it is not in either format
+
+    Args:
+        _date_str (str): string to test for a valid date
+
+    Returns:
+        str: string with the time if there was a valid date time string
+        passed in; else an empty string if it was not a valid time
+
+   Test
+    -------------
+    >>> extract_time_stamp("bbb")
+    ''
+    >>> extract_time_stamp("2023-05-12 10:25:45")
+    '10:25:45'
+    >>> extract_time_stamp("13:45:30")
+    '13:45:30'
+    >>> extract_time_stamp("2023-05-12")
+    ''
+    >>> extract_time_stamp(' 00:02:37')
+    '00:02:37'
+   """
+    formats = ["%H:%M:%S", "%Y-%m-%d %H:%M:%S"]
+    time_stamp = ""
+
+    for fmt in formats:
+        try:
+            datetime_obj = dt.datetime.strptime(_date_str.strip(), fmt)
+            time_stamp = datetime_obj.strftime("%H:%M:%S")
+            break
+        except ValueError:
+            continue
+    return time_stamp
+
+
 # TODO: convert DataPacket class to set of functions
-def convert_csv_row_to_packet(csv_row):
+def convert_csv_row_to_packet(csv_row_list: list[str]) -> dict:
+    """
+    Convert a list from the csv save file into a dictionary, similar
+    to the data packet received from the sensor.  If the list of
+    csv entries is not formatted correctly, this will return an empty dict
+
+    Args:
+        csv_row_list (list): the row from the saved csv file, already split
+        into a list on the commas
+
+    Returns:
+        dict: data packet format with each column of the csv file put
+        with the proper key
+
+    Test
+    -------------
+    >>> convert_csv_row_to_packet(['', '', '', '', '', '', '', ''])
+    {}
+    >>> convert_csv_row_to_packet(['2023-03-07 00:02:53', 'position 1', '15746.0',
+    '29.0', '40.2', '0.0', '0'])
+    {'packet_id': 0, 'position': 'position 1', 'time': '00:02:53', 'CPUTemp': 40.2,
+    'SensorTemp': 0.0, 'OryConc': 15746.0, 'AV': 29.0}
+    """
+    # incase there was any white space in the file, strip all white space first
+
     pkt = {}
-    if isint(csv_row[indices["packet_id"]]):
-        pkt["packet_id"] = int(csv_row[indices["packet_id"]])
-    # for obj in ["time", "position"]:
-    #     pkt[obj] = csv_row[indices[obj]].strip()
-    pkt["position"] = csv_row[indices["position"]].strip()
+    if isint(csv_row_list[indices["packet_id"]]):
+        # use local function to test if packet id can be converted
+        pkt["packet_id"] = int(csv_row_list[indices["packet_id"]])
+    else:  # ignore packet id that is missing or formatted wrong
+        return {}
+    pkt["position"] = csv_row_list[indices["position"]].strip()
+    if pkt["position"] not in POSITIONS:
+        # log message to test this works, try to catch if the device was sent instead
+        logger.error(f"received message from device not in POSITIONS list| pkt: {pkt}")
+        return {}  # ignore messages from devices not in list
+
     # for time strip the date from it, split at the space between
     # the data and time and take the time at the end
-    pkt["time"] = csv_row[indices["time"]].split(" ")[1].strip()
-    # print(csv_row)
-    # print(csv_row[indices["time"]].split(" "))
-    # print(f"load csv row: {pkt}")
+    pkt["time"] = extract_time_stamp(csv_row_list[indices["time"]])
+
     for obj in ["CPUTemp", "SensorTemp", "OryConc"]:
-        if isfloat(csv_row[indices[obj]]):
-            pkt[obj] = float(csv_row[indices[obj]])
+        if isfloat(csv_row_list[indices[obj]]):
+            pkt[obj] = float(csv_row_list[indices[obj]])
     try:  # this will be a ' ' if there is no AV key
-        pkt['AV'] = float(csv_row[indices['AV']])
+        pkt['AV'] = float(csv_row_list[indices['AV']])
     except:
         pass
         # pkt['AV'] = None
@@ -226,20 +330,20 @@ class DeviceData:
         self.settings_checked = False
 
     def save_summary_data(self, csv_writer: csv.writer, position: str):
-        # print(f"save position summary data")
+        print(f"save position summary data")
         for i in range(len(self.packet_ids)):
             # make row to write
             if len(self.av) > 0:
-                row = [self.time_series[i],
+                row = [self.time_series[i].strftime("%Y-%m-%d %H:%M:%S"),
                        position, self.oryzanol[i],
                        self.av[i], self.cpu_temp[i],
                        self.sensor_temp[i], self.packet_ids[i]]
             else:
-                row = [self.time_series[i],
+                row = [self.time_series[i].strftime("%Y-%m-%d %H:%M:%S"),
                        position, self.oryzanol[i],
                        '', self.cpu_temp[i],
                        self.sensor_temp[i], self.packet_ids[i]]
-            # print(row)
+            print(f"row: {row}")
             csv_writer.writerow(row)
 
     def update_date(self, date):
@@ -268,9 +372,10 @@ class DeviceData:
         if "AV" in data_pkt :
             # print(f"inserting AV: {data_pkt['AV']}")
             self.av.insert(insert_idx, float(data_pkt["AV"]))
+
             # print(f"adding av: {insert_idx}, {float(data_pkt['AV'])}, {self.av}")
         elif self.use_av:
-            self.av.insert(insert_idx, np.nan)
+            self.av.insert(insert_idx, nan)
 
         if "device" in data_pkt:  # this is the code in the sensors still
             position = data_pkt["device"].strip()
@@ -298,15 +403,16 @@ class DeviceData:
             temp = float(data_pkt["CPUTemp"])
             self.cpu_temp.insert(insert_idx, temp)
         else:
-            self.cpu_temp.insert(insert_idx, np.nan)
+            self.cpu_temp.insert(insert_idx, nan)
         if "SensorTemp" in data_pkt:
             sensor_temp = float(data_pkt["SensorTemp"])
             self.sensor_temp.insert(insert_idx, sensor_temp)
         else:
-            self.sensor_temp.insert(insert_idx, np.nan)
+            self.sensor_temp.insert(insert_idx, nan)
 
         self.packet_ids.insert(insert_idx, int(data_pkt["packet_id"]))
-
+        print(f"packet time: {data_pkt['time']}")
+        print(f"packet: {data_pkt}")
         if len(data_pkt["time"]) <= 8:
             time = dt.datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
             time = dt.datetime.combine(self.today, time)
@@ -337,10 +443,10 @@ class DeviceData:
         else:
             # print(f"No packet id, abondoning data")
             return None
-        _sort_idx = np.searchsorted(np.array(self.packet_ids), _pkt_id)
+        _sort_idx = searchsorted(array(self.packet_ids), _pkt_id)
         #         print(f"{_pkt_id in self.packet_ids}, pkt ids: {self.packet_ids}")
         if _pkt_id in self.packet_ids:
-            # print(f"Already recieved pkt id: {_pkt_id}")
+            # print(f"Already received pkt id: {_pkt_id}")
             return None  # this packet id is already present
         # print(f"sort idx: {_sort_idx}, len packet id: {len(self.packet_ids)}")
         mode = None
@@ -366,17 +472,21 @@ class TimeStreamData:
     def __init__(self, root_app):
         # print("Init Time Stream Data")
         # print(f"FILE HEADER: {FILE_HEADER}")
+        logging.debug(f"dt2: {dt.datetime.now()}")
         self.master_graph = root_app.graphs
         self.connection = None
         devices = DEVICES[:]  # copy to append to it
         devices.append("AV")
         self.models = model.Models(devices)
         # this is not pretty
+        # TODO: remove dependance inject, this uses after and the info frame
+        # Move afters to main, and import info frame directly
         self.root_app = root_app  # type: tk.Tk
         self.update_after = None
         self.positions = {}
         # this is needed to make the datetime in the data
         self.today = dt.datetime.today().strftime("%Y-%m-%d")
+        logging.debug(f"dt device data: {self.today}")
         # message_id to prevent repeately asking for the same data
         self.already_asked_for_data = False
         # make these in make_save_files() has to make these on new days also
@@ -406,7 +516,6 @@ class TimeStreamData:
         today = dt.datetime.today().strftime("%Y-%m-%d")
         data_path = os.path.join(__location__, "data")
         self.save_file = os.path.join(data_path, f"{today}.csv")
-        # print("save file", self.save_file)
         self.save_raw_data_file = os.path.join(data_path, f"{today}_raw_data.csv")
         try:  # the factory computer wants a different directory
             if os.path.isdir(FACTORY_DIR):
@@ -426,7 +535,7 @@ class TimeStreamData:
             for row in csv_reader:
                 # print(f"line count: {line_count}, len row: {len(row)}")
                 if line_count != 0 and len(row) >= 7:
-                    # print(f"load row: {row}")
+                    print(f"load row: {row}")
                     self.add_csv_data(row)
                 line_count += 1
 
@@ -449,7 +558,7 @@ class TimeStreamData:
         self.connection = conn
 
     def add_device(self, position):
-        # logging.info(f"adding device: {position} to data_class")
+        logging.info(f"adding device: {position} to data_class")
         print(f"adding device: {position} to data_class")
         if position not in global_params.POSITIONS:
             # see if it was send as position and fix it
@@ -469,7 +578,9 @@ class TimeStreamData:
         """ Add data from a csv row, this will be saved data """
         # position = csv_row[indices["position"]].strip()
         data_pkt = convert_csv_row_to_packet(csv_row)
-        # print(f"adding data_pkt: {data_pkt}")
+        print(f"adding data_pkt: {data_pkt}")
+        if "position" not in data_pkt:
+            return  # ignore not proper data_pkt
         position = data_pkt["position"]
         # print(f"adding csv data for position: {position}")
         if position:
@@ -479,9 +590,12 @@ class TimeStreamData:
             device_data.add_data_pkt(data_pkt, self.models)
             print(f"len: {len(device_data.time_series)}")
 
+    @Timer(name="add_data", text="Time: {:.4f}", logger=logging.debug)
     def add_data(self, data_pkt: dict, save_data_pkt=True):
         # TODO: fix this, its a mess
         # print(f"data_pkt: {data_pkt}")
+        # print(f"dt3: {dt.datetime.now()}")
+        logger.info(f"adding data packet: {data_pkt}")
         if type(data_pkt) is not dict:
             return 204  # TODO: sometimes an int gets in here.  look at sensor code to fix
         # if data is from a database, it has to be converted first
@@ -494,6 +608,7 @@ class TimeStreamData:
             print("No 'device' or 'position' in data_pkt")
             return 200
         if position not in self.positions:
+            print(f"adding device2: {position}")
             self.add_device(position)
 
         device_data = self.positions[position]  # type: DeviceData
@@ -502,6 +617,7 @@ class TimeStreamData:
         packet_date = data_pkt["date"]
         packet_datetime = dt.datetime.strptime(packet_date, "%Y-%m-%d").date()
         current_date = device_data.today
+        # print(f"dt4: {current_date}")
         if packet_date != str(current_date):
             print(f"This is a different day. Today {current_date}, packet date {packet_date}")
             # test if date advanced at midnight and files need to update
@@ -512,7 +628,7 @@ class TimeStreamData:
             # elif packet_datetime == device_data.today - timedelta(days=1):
             else:
                 # old data was received, just ignore it rather than figure out if its needed
-                print(f"packet data: {packet_date}, current date: {current_date}")
+                # print(f"packet data: {packet_date}, current date: {current_date}")
                 return 201  # testing unit code
         # add the date to the individual sensor data class
         data_pkt = device_data.add_data_pkt(data_pkt, self.models)
@@ -527,25 +643,26 @@ class TimeStreamData:
             self.already_asked_for_data = True
             self.root_app.after(5*60000, self.clear_ask_for_data_flag)
             missing_pkt = self.find_next_missing_pkts(device_data, int(data_pkt["packet_id"]))
-            print(f"ask for packet2: {missing_pkt} from position: {position}")
+            logging.debug(f"ask for packets: {missing_pkt} from position: {position}")
             if self.connection:  # for testing or offline
                 self.connection.ask_for_stored_data(position, missing_pkt)
                 device_data.ask_for_missing_packets = False
 
         if "Raw_data" in data_pkt and save_data_pkt:
             self.master_graph.update_spectrum(data_pkt["Raw_data"], position)
-
         if not self.update_after:
             self.update_after = self.root_app.after(500, lambda: self.update_graph(position))
 
         if save_data_pkt:  # this is live data
             # TODO: update the ory conc value in this
-            print(f"saving data: {data_pkt['packet_id']}")
+            # print(f"saving data: {data_pkt['packet_id']}")
             self.save_data(data_pkt)
             self.root_app.info.check_in(position)
             # only update the info frame if the is newer data than
             # the data saved
             self.root_app.info.update_current_info(data_pkt, position)
+        if logger.isEnabledFor(logging.INFO):  # only get statitics if log is set high enough
+            log_cpu_ram_usage()
         return 0
 
     def update_rolling_samples(self, n_samples):
@@ -590,7 +707,7 @@ class TimeStreamData:
         data_list.append('\n')
         # now write a row to the file
         try:
-            with open(self.save_file, 'a') as _file:
+            with open(self.save_file, 'a', encoding="utf8") as _file:
                 _file.write(', '.join(data_list))
         except Exception as _error:
             # do something here to save the list and write later
@@ -605,7 +722,7 @@ class TimeStreamData:
                     data_list2.append(", ")
             if "Raw_data" in data_pkt:
                 data_list2.extend([str(i) for i in data_pkt["Raw_data"]])
-                with open(self.save_raw_data_file, 'a') as _file:
+                with open(self.save_raw_data_file, 'a', encoding="utf8") as _file:
                     _file.write(', '.join(data_list2))
                     if "\n" not in data_list2[-1]:
                         _file.write("\n")
@@ -650,12 +767,12 @@ class TimeStreamData:
 
         """
         try:
-            with open(filepath, 'x') as _file:
+            with open(filepath, 'x', encoding="utf8") as _file:
                 # use 'x' to try to make the file, if it exists
                 # it will raise an error and just pass
                 _file.write(', '.join(header))
                 _file.write('\n')
-        except Exception as error:
+        except FileExistsError as error:
             print(f"Error making file: {filepath}, error: {error}")
 
     def __str__(self):

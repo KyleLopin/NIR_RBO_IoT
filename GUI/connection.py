@@ -4,7 +4,7 @@
 Connection classes to connect to MQTT servers.
 """
 
-__author__ = "Kyle Vitautus Lopin"
+__author__ = "Kyle Vitautas Lopin"
 
 # standard files
 import ast
@@ -23,6 +23,9 @@ import check_saved_data
 import data_class
 import global_params
 import update_sensor
+# files for type hinting
+if False:
+    from main_gui import RBOGUI
 
 
 DEVICES = global_params.DEVICES.keys()
@@ -62,7 +65,7 @@ class ConnectionClass:
     Handle all high level MQTT communications, including make and handling
     multiple servers and their priorities of communication.
     """
-    def __init__(self, root: tk.Tk, data: data_class.TimeStreamData):
+    def __init__(self, root: "RBOGUI", data: data_class.TimeStreamData):
         """
         Hardwired to use mosquitto as default and to fall back to HIVEMQ when
         local mosquitto MQTT is not working.
@@ -117,7 +120,7 @@ class BaseConnectionClass:
     TODO: see if self.client can be removed
     TODO: see if self.data can be bound to client and removed
     """
-    def __init__(self, master: tk.Tk,
+    def __init__(self, master: "RBOGUI",
                  client_name, data=None,
                  mqtt_version=MQTT_VERSION):
         if data:
@@ -125,11 +128,13 @@ class BaseConnectionClass:
         else:
             print("making connection in connection.py")
             self.data = data_class.TimeStreamData(master)
+        self.mqtt_servers = None  # will be assigned in the LocalMQTTServer class
+        self.mqtt_server_index = 0
         self.master = master
         self.loop = None
         self.found_server = False
         self.connected = False
-        self.client = mqtt.Client(client_name, # clean_session=False,
+        self.client = mqtt.Client(client_name,  # clean_session=False,
                                   protocol=mqtt_version)
         self.client.on_connect = self._on_connection
         self.client.on_disconnect = self._on_disconnect
@@ -172,19 +177,16 @@ class BaseConnectionClass:
         # print("Got message:", msg.topic, msg.payload)
         device = msg.topic.split("/")[1]
 
-        # devices, i.e. "device_2" are send in the topic, convert that
+        # devices, i.e. "device_2" are sent in the topic, convert that
         # to position, i.e. "position 2" for the rest of this program
         if device in global_params.DEVICES:
             position = global_params.DEVICES[device]
-            # update the usexr information frame the sensor is working
+            # update the user information frame the sensor is working
             self.master.info.check_in(position)
         else:  # the topic is not correct for a device
             return
         if 'data' in msg.topic:
             data_str = msg.payload.decode('utf8')
-            # json_loaded = json.load(data_str)
-            # json_data = json.dump(json_loaded, sort_keys=True)
-            # self.parse_mqtt_data(ast.literal_eval(data_str))
             self.parse_mqtt_data(json.loads(data_str))
         elif 'status' in msg.topic:
             # JSON converts False to false and True to true, fix that here
@@ -208,7 +210,7 @@ class BaseConnectionClass:
         in the packet also.  This handles status updates for:
         Update if the device is running or not
         Update the number of packets the sensor has sent
-        Check if model parameters are up to date - NOT TESTED YET
+        Check if model parameters are up-to-date - NOT TESTED YET
 
         Args:
             packet (dict): JSON mqtt data packet
@@ -236,8 +238,6 @@ class BaseConnectionClass:
             packet (dict): data packet(s) from sensor
         """
         if "data packets" in packet: # this is saved data packets
-            # the packet will be in the form of "packet id number": "data", i.e.
-            # "198": "25, 234, 299, ...."
             for key in packet:
                 # print(f"data key: {key}")
                 if "data packets" not in key:
@@ -296,7 +296,7 @@ class BaseConnectionClass:
 #         print(f"self connected value2: {self._connected}")
 
         if not self.found_server:
-            print("found server ask pakcet")
+            print("found server ask packet")
             self.check_connections()
         self.found_server = True
         client.subscribe(MQTT_PATH_LISTEN, qos=1)
@@ -430,7 +430,7 @@ class BaseConnectionClass:
         if os.name == "posix":
             # raspberry pi which should be running the
             mqtt_server_name = MQTT_LOCALHOST
-        else:  # mac or windows should look for external
+        elif self.mqtt_servers:  # mac or windows should look for external
             mqtt_server_name = self.mqtt_servers[self.mqtt_server_index]
             self.mqtt_server_index = (self.mqtt_server_index + 1) % len(self.mqtt_servers)
         # print(f"connecting to: {mqtt_server_name}")
@@ -457,10 +457,10 @@ class BaseConnectionClass:
 
 class LocalMQTTServer(BaseConnectionClass):
     """
-    Impliment a BaseConnectionClass for a mosquitto MQTT broker running on
+    Implement a BaseConnectionClass for a mosquitto MQTT broker running on
     the local WLAN
     """
-    def __init__(self, master: tk.Tk, data=None):
+    def __init__(self, master: "RBOGUI", data=None):
         print(f"connecting with name: {MQTT_NAME}")
         # BaseConnectionClass.__init__(self, master,
         #                              MQTT_NAME, data=data)
@@ -486,7 +486,7 @@ class LocalMQTTServer(BaseConnectionClass):
 
 
 class HIVEMQConnection(BaseConnectionClass):
-    def __init__(self, master: tk.Tk, data=None):
+    def __init__(self, master: "RBOGUI", data=None):
         BaseConnectionClass.__init__(self, master,
                                      "", data=data,
                                      mqtt_version=mqtt.MQTTv5)
