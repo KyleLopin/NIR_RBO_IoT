@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import tkinter as tk
+from typing import List, Tuple
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 logging.getLogger('PIL').setLevel(logging.WARNING)
 
@@ -62,13 +63,15 @@ LINE_ALPHA = 0.2
 
 class PyPlotFrame(tk.Frame):
     def __init__(self, parent, root_app: tk.Tk,
-                 fig_size=(3, 3), xlabel=None,
-                 ylabel=None, xlim=None,
-                 ylim=None,
-                 ylim_buttons: tuple[str, str, str] = None,
-                 rhs_buttons: tuple[str, str, str] = None,
-                 hlines: list = None,
-                 use_log=False):
+                 fig_size: Tuple[int, int] = (3, 3),
+                 xlabel: str = None,
+                 ylabel: str = None,
+                 xlim: List[float] = None,
+                 ylim: List[float] = None,
+                 ylim_buttons: Tuple[str, str, str] = None,
+                 rhs_buttons: Tuple[str, str, str] = None,
+                 hlines: List[float] = None,
+                 use_log: bool =False):
         tk.Frame.__init__(self, master=parent)
         self.root_app = root_app
         self.ylim = ylim

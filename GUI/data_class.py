@@ -15,6 +15,7 @@ import logging
 import os
 import shutil
 import tkinter as tk  # type hinting
+from typing import List
 
 # installed libraries
 from codetiming import Timer
@@ -181,7 +182,7 @@ def extract_time_stamp(_date_str: str) -> str:
 
 
 # TODO: convert DataPacket class to set of functions
-def convert_csv_row_to_packet(csv_row_list: list[str]) -> dict:
+def convert_csv_row_to_packet(csv_row_list: List[str]) -> dict:
     """
     Convert a list from the csv save file into a dictionary, similar
     to the data packet received from the sensor.  If the list of
