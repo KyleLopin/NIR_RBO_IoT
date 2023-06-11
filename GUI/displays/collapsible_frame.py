@@ -62,9 +62,6 @@ class VerticalButton(tk.Canvas):
         self.itemconfig(self.text, text=text)
 
     def get_text(self):
-        print(self.text)
-        print(print(type(self.text)))
-        print(f"ll: {dir(self.text)}")
         return self.itemcget(self.text, 'text')
 
 # class VerticalButton(tk.Frame):
@@ -226,11 +223,14 @@ class CollapsibleFrame(tk.Frame):
         Args:
             event: The event that triggered the toggle (optional).
         """
+        print("toogle")
         if self.collapsed:
+            print("pack")
             self.collapsible_frame.pack(fill="both", expand=True,
                                         side=self.side, before=self.toggle_button)
             self.toggle_button.config_text(text=f"{self.open_symbol} {self.open_text}")
         else:
+            print("collapse")
             self.collapsible_frame.pack_forget()
             self.toggle_button.config_text(text=f"{self.closed_symbol} {self.closed_text}")
         self.collapsed = not self.collapsed
