@@ -115,7 +115,7 @@ class PyPlotFrame(tk.Frame):
             button_frame = CollapsibleFrame(self,
                                             closed_button_text="Show y axis options",
                                             open_button_text="Collapse options",
-                                            collapsed=False, side="left")
+                                            collapsed=False, side="left", bg="white")
             for button_opt in ylim_buttons:
                 button_text = f"{button_opt[0]}\n({button_opt[1]:,}-{button_opt[2]:,})"
                 tk.Button(button_frame.collapsible_frame, text=button_text, width=15,
