@@ -62,16 +62,48 @@ LINE_ALPHA = 0.2
 
 
 class PyPlotFrame(tk.Frame):
+    """
+    A custom Tkinter frame that embeds a pyplot graph.
+
+    Attributes:
+        root_app (tk.Tk): The root application.
+        ylim (List[float]): The limits for the y-axis.
+        figure (mp.figure.Figure): The pyplot figure.
+        axis (mp.axes.Axes): The axes of the figure.
+        canvas (FigureCanvasTkAgg): The canvas to display the figure.
+        lines (dict): A dictionary of lines in the graph.
+    """
     def __init__(self, parent, root_app: tk.Tk,
                  fig_size: Tuple[int, int] = (3, 3),
                  xlabel: str = None,
                  ylabel: str = None,
                  xlim: List[float] = None,
                  ylim: List[float] = None,
-                 ylim_buttons: Tuple[str, str, str] = None,
+                 ylim_buttons: List[Tuple[str, int, int]] = None,
                  rhs_buttons: Tuple[str, str, str] = None,
                  hlines: List[float] = None,
                  use_log: bool =False):
+        """
+        Initialize the PyPlotFrame.
+
+        Args:
+            parent: The parent widget.
+            root_app (tk.Tk): The root application.
+            fig_size (Tuple[int, int], optional): The size of the figure. Defaults to (3, 3).
+            xlabel (str, optional): The label for the x-axis. Defaults to None.
+            ylabel (str, optional): The label for the y-axis. Defaults to None.
+            xlim (List[float], optional): The limits for the x-axis. Defaults to None.
+            ylim (List[float], optional): The limits for the y-axis. Defaults to None.
+            ylim_buttons (List[Tuple[str, int, int]], optional): To make buttons to
+            a collapsible frame that will let the user change the y-axis limits.  Pass in
+            a list of tuples with the format (string to put on first line of the description, int
+            of the bottom y lim, int of top of y lim).
+            rhs_buttons (Tuple[str, str, str], optional): Right-hand side buttons to
+            add the option of displaying the data using the right hand side of the graph. Leave
+            blank if you do not want to use the rhs.
+            hlines (List[float], optional): Horizontal lines to be displayed on the graph. Defaults to None.
+            use_log (bool, optional): Whether to use a logarithmic scale on the y-axis. Defaults to False.
+        """
         tk.Frame.__init__(self, master=parent)
         self.root_app = root_app
         self.ylim = ylim
