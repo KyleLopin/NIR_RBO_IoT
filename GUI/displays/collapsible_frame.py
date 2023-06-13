@@ -8,8 +8,10 @@ Originally written by ChatGTP and then edited
 
 __author__ = "Kyle Vitautas Lopin"
 
+# standard libraries
 import tkinter as tk
 from tkinter.font import Font
+from typing import Callable
 
 # for testing
 BUTTON_OPTS = (["Full", 0, 16000],
@@ -128,12 +130,16 @@ class CollapsibleFrame(tk.Frame):
         collapsible_frame (tk.Frame): The frame that will collapse or expand on button press
         side (str): "left" or "right" The side where the collapsible
         frame and toggle button are positioned.
+        extra_command (callable): function to call with when toggling the collapsible
+        frame is open or closed.
 
     """
 
     def __init__(self, parent, closed_button_text: str = "",
                  open_button_text: str = "", collapsed: bool = False,
-                 add_outline: bool = True, side: str = "left", *args, **kwargs):
+                 add_outline: bool = True, side: str = "left",
+                 extra_command: Callable = None,
+                 *args, **kwargs):
         """
         Initialize the CollapsibleFrame.
 
@@ -146,6 +152,8 @@ class CollapsibleFrame(tk.Frame):
             collapsible_frame.
             side (str): "left" or "right" The side where the collapsible
             frame and toggle button are positioned.
+            extra_command (callable): function to call with when toggling the collapsible
+            frame is open or closed.
             *args: Additional positional arguments.
             **kwargs: Additional keyword arguments.
         """
@@ -153,6 +161,7 @@ class CollapsibleFrame(tk.Frame):
         if add_outline:
             self.config(highlightbackground="black", highlightthickness=1)
 
+        self.extra_command = extra_command
         self.open_text = open_button_text
         self.closed_text = closed_button_text
         self.collapsed = collapsed
@@ -206,6 +215,8 @@ class CollapsibleFrame(tk.Frame):
             event: The event that triggered the toggle (optional).
         """
         print("toogle")
+        if self.extra_command:
+            self.extra_command()
         if self.collapsed:
             print(f"pack {self.open_symbol} {self.open_text}")
             self.collapsible_frame.pack(fill="both", expand=True,

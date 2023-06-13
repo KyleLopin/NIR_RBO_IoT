@@ -13,6 +13,8 @@ from datetime import datetime, timedelta
 import json
 import logging
 import os
+from random import randint
+import statistics
 import tkinter as tk
 from typing import List, Tuple
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
@@ -69,7 +71,7 @@ class PyPlotFrame(tk.Frame):
         root_app (tk.Tk): The root application.
         ylim (List[float]): The limits for the y-axis.
         figure (mp.figure.Figure): The pyplot figure.
-        axis (mp.axes.Axes): The axes of the figure.
+        left_axis (mp.axes.Axes): The axes of the figure.
         canvas (FigureCanvasTkAgg): The canvas to display the figure.
         lines (dict): A dictionary of lines in the graph.
     """
@@ -123,45 +125,55 @@ class PyPlotFrame(tk.Frame):
                           ).pack(side=tk.TOP, pady=10)
             button_frame.pack(side="left", fill="y")
 
-        # if ylim_buttons:
-        #     collapse_frame = CollapsibleFrame(self, button_text="Show y axis options")
-        #
-        #     for button_opt in ylim_buttons:
-        #         button_text = f"{button_opt[0]}\n({button_opt[1]:,}-{button_opt[2]:,})"
-        #         tk.Button(collapse_frame.collapsible_frame, text=button_text,
-        #                   width=15,
-        #                   command=lambda a=button_opt[1], b=button_opt[2]: self.update_ylim(a, b)
-        #                   ).pack(side=tk.TOP, pady=10)
-        #     collapse_frame.pack(side=tk.RIGHT)
-
         # routine to make and embed the matplotlib graph
         self.figure = mp.figure.Figure(figsize=fig_size)
         self.figure.subplots_adjust(bottom=0.2)
-        self.axis = self.figure.add_subplot(111)
+        self.left_axis = self.figure.add_subplot(111)
+
+        self.right_axis = None
+        if rhs_buttons:
+            _collapsed = True  # flag to set if frame should start being shown with the rhs axis labels
+            self.right_axis = self.left_axis.twinx()
+            self.rhs_collapse_frame = CollapsibleFrame(self,
+                                                       closed_button_text="Show right y axis options",
+                                                       open_button_text="Collapse options",
+                                                       collapsed=_collapsed,
+                                                       extra_command=self.add_right_axis,
+                                                       side="right", bg="white")
+            if _collapsed:
+                self.remove_right_axis()
+
+            for button_opt in ylim_buttons:
+                button_text = f"{button_opt[0]}\n({button_opt[1]:,}-{button_opt[2]:,})"
+                tk.Button(self.rhs_collapse_frame.collapsible_frame, text=button_text,
+                          width=15,
+                          command=lambda a=button_opt[1], b=button_opt[2]: self.update_ylim(a, b)
+                          ).pack(side=tk.TOP, pady=10)
+            self.rhs_collapse_frame.pack(side="right", fill="y")
 
         self.canvas = FigureCanvasTkAgg(self.figure, self)
         self.canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         if ylabel:
-            self.axis.set_ylabel(ylabel, size=LABEL_SIZE)
+            self.left_axis.set_ylabel(ylabel, size=LABEL_SIZE)
         if xlabel:
-            self.axis.set_xlabel(xlabel, size=LABEL_SIZE)
+            self.left_axis.set_xlabel(xlabel, size=LABEL_SIZE)
             if "Time" in xlabel:
-                self.axis.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+                self.left_axis.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
 
         if ylim:
-            self.axis.set_ylim(ylim)
+            self.left_axis.set_ylim(ylim)
         if xlim:
-            self.axis.set_xlim(xlim)
+            self.left_axis.set_xlim(xlim)
 
         if use_log:
-            self.axis.set_yscale('log')
+            self.left_axis.set_yscale('log')
 
         else:  # can cause error if not set on raspberry pi python 3.7
             now = datetime.now()
-            self.axis.set_xlim([now-timedelta(minutes=5), now+timedelta(minutes=5)])
+            self.left_axis.set_xlim([now - timedelta(minutes=5), now + timedelta(minutes=5)])
 
-        self.axis.tick_params(axis='both', labelsize=TICK_SIZE)
+        self.left_axis.tick_params(axis='both', labelsize=TICK_SIZE)
 
         plt.tight_layout()
         self.canvas.draw()
@@ -176,8 +188,8 @@ class PyPlotFrame(tk.Frame):
 
         if hlines:
             for i, hline in enumerate(hlines):
-                self.axis.axhline(y=hline, color=HLINE_COLORS[i],
-                                  ls='--')
+                self.left_axis.axhline(y=hline, color=HLINE_COLORS[i],
+                                       ls='--')
 
     def update_graph(self, x, y, label=None,
                      show_mean=True):
@@ -215,16 +227,16 @@ class PyPlotFrame(tk.Frame):
             marker = "-o"
             if label == "blank":
                 marker = "-"
-            self.lines[label], = self.axis.plot(x, y, marker,
-                                                alpha=LINE_ALPHA,
-                                                label=label,
-                                                color=_color)
+            self.lines[label], = self.left_axis.plot(x, y, marker,
+                                                     alpha=LINE_ALPHA,
+                                                     label=label,
+                                                     color=_color)
             if label != "blank":
-                self.axis.legend(prop={'size': LABEL_SIZE})
+                self.left_axis.legend(prop={'size': LABEL_SIZE})
             if show_mean:
-                self.mean_lines[label], = self.axis.plot(x, rolling_data, '--',
-                                                         color=_color,
-                                                         alpha=ROLL_ALPHA)
+                self.mean_lines[label], = self.left_axis.plot(x, rolling_data, '--',
+                                                              color=_color,
+                                                              alpha=ROLL_ALPHA)
         else:
             self.lines[label].set_xdata(mdates.date2num(x))
             self.lines[label].set_ydata(y)
@@ -236,16 +248,40 @@ class PyPlotFrame(tk.Frame):
         print(f"check1 {self.zoomed}, {label}")
         if not self.zoomed and label != "blank":
             print("re-limit axis", self.ylim)
-            self.axis.relim()
-            self.axis.autoscale()
-            if self.ylim:
-                # print("setting ylim")
-                self.axis.set_ylim(self.ylim)
+            self.left_axis.relim()
+            self.left_axis.autoscale()
+            # if self.ylim:  # TODO: test if this is needed
+            #     # print("setting ylim")
+            #     self.left_axis.set_ylim(self.ylim)
             # tick_skips = len(x) // 6
             # print(f"tick skips: {tick_skips}")
             # self.axis.set_xticks(self.axis.get_xticks()[::tick_skips])
         print("Update in graph_v2; drawing")
         self.canvas.draw()
+
+    def toggle_right_axis(self):
+        print(f"Toggling the right hand size axis")
+        print(f"visible: {self.rhs_collapse_frame.collapsible_frame.winfo_ismapped()}")
+
+    def remove_right_axis(self):
+        """
+        Remove the right-hand side axis labels and tick marks.
+        """
+        # self.right_axis.set_yticks([])  # Remove the tick marks
+        # self.right_axis.set_yticklabels([])  # Remove the tick labels
+        self.right_axis.tick_params(axis='y', left=False,
+                                    right=False, labelleft=False, labelright=False)
+
+    def add_right_axis(self):
+        """
+        Add back the right-hand side axis labels and tick marks.
+        """
+        print("adding right axis")
+        # self.right_axis.set_yticks([])  # Clear any existing tick marks
+        # self.right_axis.set_yticklabels([])  # Clear any existing tick labels
+        self.right_axis.tick_params(axis='y', left=False,
+                                    right=True, labelleft=False, labelright=True)
+        self.right_axis.spines['right'].set_visible(True)  # Show the right spine
 
     def update_ylim(self, y_low, y_high):
         print(f"Updating the ylim: {y_low}, {y_high}")
@@ -253,6 +289,23 @@ class PyPlotFrame(tk.Frame):
         self._set_ylim(y_low, y_high)
 
     def rolling_avg(self, _list):
+        """
+        Calculate the rolling average of a list.  From ChatGPT
+
+        Args:
+            _list (list): The input list of values.
+
+        Returns:
+            list: The list of rolling averages.
+
+        """
+        _rolling_avg = [
+            statistics.mean(_list[max(0, i - self.rolling_samples):i])
+            for i in range(1, len(_list) + 1)
+        ]
+        return _rolling_avg
+
+    def rolling_avg_depr(self, _list):
         _rolling_avg = []
         for i in range(1, len(_list) + 1):
             if (i - self.rolling_samples) > 0:
@@ -263,22 +316,70 @@ class PyPlotFrame(tk.Frame):
             _rolling_avg.append(avg)
         return _rolling_avg
 
-    def _set_ylim(self, y1, y2):
-        if y1 > y2:
-            self.axis.set_ylim([y2, y1])
+    def _set_ylim(self, y1, y2, use_axis="left"):
+        """
+        Set the y-axis limits for the specified axis.
+
+        Args:
+            y1 (float): The lower limit of the y-axis.
+            y2 (float): The upper limit of the y-axis.
+            use_axis (str, optional): The axis to set the y-axis limits for.
+                Valid values are 'left' and 'right'. Defaults to 'left'.
+
+        Raises:
+            ValueError: If the value for 'use_axis' is invalid.
+
+        """
+        # Determine the axis to use based on the 'use_axis' parameter
+        if use_axis == "left":
+            axis = self.left_axis
+        elif use_axis == "right":
+            axis = self.right_axis
         else:
-            self.axis.set_ylim([y1, y2])
+            # Raise an exception if 'use_axis' has an invalid value
+            raise ValueError("Invalid value for 'use_axis'. Expected 'left' or 'right'.")
+
+        # Set the y-axis limits based on the given values
+        if y1 > y2:
+            axis.set_ylim([y2, y1])  # Reverse the order if y1 is greater than y2
+        else:
+            axis.set_ylim([y1, y2])
+
+        # Redraw the canvas to reflect the changes
         self.canvas.draw()
 
     def _set_xlim(self, x1, x2):
+        """
+        Set the x-axis limits.
+
+        Args:
+            x1 (float): The lower limit of the x-axis.
+            x2 (float): The upper limit of the x-axis.
+
+        """
+        # Determine the correct order of the limits
         if x1 > x2:
-            self.axis.set_xlim([x2, x1])
+            # If x1 is greater than x2, reverse the order
+            self.left_axis.set_xlim([x2, x1])
         else:
-            self.axis.set_xlim([x1, x2])
+            # Otherwise, use the limits as is
+            self.left_axis.set_xlim([x1, x2])
+
+        # Redraw the canvas to reflect the changes
         self.canvas.draw()
 
 
 if __name__ == '__main__':
+    MOCK_RANGE = [2000, 10000]
+    time_data = []
+    y_data = []
+
+
+    def mock_data():
+        y_data.append(randint(MOCK_RANGE[0], MOCK_RANGE[1]))
+        time_data.append(datetime.now())
+        plot.update_graph(time_data, y_data, show_mean=True)
+
     root = tk.Tk()
     # plot = PyPlotFrame(root, root,
     #                    fig_size=(9, 4),
@@ -290,8 +391,11 @@ if __name__ == '__main__':
                        xlabel="Time",
                        ylim=[0, 16000],
                        hlines=[3500, 5000, 8000, 10000],
-                       ylim_buttons=global_params.ORY_GRAPH_BUTTON_OPTS)
-    plot.update_graph([datetime(2023, 2, 24, 0, 1, 51),
-                       datetime(2023, 2, 24, 0, 4, 51)], [1, -5])
+                       ylim_buttons=global_params.ORY_GRAPH_BUTTON_OPTS,
+                       rhs_buttons=global_params.RHS_BUTTON_OPTS)
+
+    tk.Button(root, text="mock data", command=mock_data).pack(side="bottom")
+    # plot.update_graph([datetime(2023, 2, 24, 0, 1, 51),
+    #                    datetime(2023, 2, 24, 0, 4, 51)], [1, -5])
     plot.pack()
     root.mainloop()
