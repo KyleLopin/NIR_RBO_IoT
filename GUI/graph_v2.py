@@ -286,8 +286,11 @@ if __name__ == '__main__':
     #                    hlines=[3500, 5000, 8000, 10000])
     plot = PyPlotFrame(root, root,
                        fig_size=(9, 4),
-                       ylim=[0.1, 100],
-                       use_log=True)
+                       ylabel="Oryzanol Concentrations",
+                       xlabel="Time",
+                       ylim=[0, 16000],
+                       hlines=[3500, 5000, 8000, 10000],
+                       ylim_buttons=global_params.ORY_GRAPH_BUTTON_OPTS)
     plot.update_graph([datetime(2023, 2, 24, 0, 1, 51),
                        datetime(2023, 2, 24, 0, 4, 51)], [1, -5])
     plot.pack()
