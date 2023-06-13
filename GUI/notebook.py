@@ -93,7 +93,7 @@ class Notebook(tk.Frame):
         self.update_ory(data.time_series,
                         data.oryzanol, position)
         if position == "position 1" or position == "position 2":
-            print(f"updating AV")
+            # print(f"updating AV")
             # print(data.av)
             self.update_av(data.time_series,
                            data.av, position)
@@ -120,7 +120,7 @@ class Notebook(tk.Frame):
 
     def update_temp(self, time, cpu_temp,
                     sensor_temp, _position):
-        print(f"Update temp with calls: {time}, {cpu_temp}, {sensor_temp}, {_position}")
+        # print(f"Update temp with calls: {time}, {cpu_temp}, {sensor_temp}, {_position}")
         sensor_mask = np.ma.masked_not_equal(np.array(sensor_temp), 0.0)
 
         self.temp_plot.update_graph(time, cpu_temp,

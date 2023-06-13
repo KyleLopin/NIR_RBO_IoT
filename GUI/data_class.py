@@ -344,7 +344,7 @@ class DeviceData:
                        position, self.oryzanol[i],
                        '', self.cpu_temp[i],
                        self.sensor_temp[i], self.packet_ids[i]]
-            print(f"row: {row}")
+            # print(f"row: {row}")
             csv_writer.writerow(row)
 
     def update_date(self, date):
@@ -412,8 +412,8 @@ class DeviceData:
             self.sensor_temp.insert(insert_idx, nan)
 
         self.packet_ids.insert(insert_idx, int(data_pkt["packet_id"]))
-        print(f"packet time: {data_pkt['time']}")
-        print(f"packet: {data_pkt}")
+        # print(f"packet time: {data_pkt['time']}")
+        # print(f"packet: {data_pkt}")
         if len(data_pkt["time"]) <= 8:
             time = dt.datetime.strptime(data_pkt["time"], "%H:%M:%S").time()
             time = dt.datetime.combine(self.today, time)
@@ -529,14 +529,14 @@ class TimeStreamData:
             self.make_file(self.save_raw_data_file, RAW_DATA_HEADERS)
 
     def load_previous_data(self):
-        print(f"load file: {self.save_file}")
+        # print(f"load file: {self.save_file}")
         with open(self.save_file) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             line_count = 0
             for row in csv_reader:
                 # print(f"line count: {line_count}, len row: {len(row)}")
                 if line_count != 0 and len(row) >= 7:
-                    print(f"load row: {row}")
+                    # print(f"load row: {row}")
                     self.add_csv_data(row)
                 line_count += 1
 
@@ -579,7 +579,7 @@ class TimeStreamData:
         """ Add data from a csv row, this will be saved data """
         # position = csv_row[indices["position"]].strip()
         data_pkt = convert_csv_row_to_packet(csv_row)
-        print(f"adding data_pkt: {data_pkt}")
+        # print(f"adding data_pkt: {data_pkt}")
         if "position" not in data_pkt:
             return  # ignore not proper data_pkt
         position = data_pkt["position"]
@@ -589,7 +589,7 @@ class TimeStreamData:
                 self.add_device(position)
             device_data = self.positions[position]
             device_data.add_data_pkt(data_pkt, self.models)
-            print(f"len: {len(device_data.time_series)}")
+            # print(f"len: {len(device_data.time_series)}")
 
     @Timer(name="add_data", text="Time: {:.4f}", logger=logging.debug)
     def add_data(self, data_pkt: dict, save_data_pkt=True):

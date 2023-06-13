@@ -147,7 +147,7 @@ class PyPlotFrame(tk.Frame):
                 button_text = f"{button_opt[0]}\n({button_opt[1]:,}-{button_opt[2]:,})"
                 tk.Button(self.rhs_collapse_frame.collapsible_frame, text=button_text,
                           width=15,
-                          command=lambda a=button_opt[1], b=button_opt[2]: self.update_ylim(a, b)
+                          command=lambda a=button_opt[1], b=button_opt[2]: self.update_ylim(a, b, "right")
                           ).pack(side=tk.TOP, pady=10)
             self.rhs_collapse_frame.pack(side="right", fill="y")
 
@@ -245,9 +245,9 @@ class PyPlotFrame(tk.Frame):
                 self.mean_lines[label].set_xdata(mdates.date2num(x))
                 self.mean_lines[label].set_ydata(rolling_data)
 
-        print(f"check1 {self.zoomed}, {label}")
+        # print(f"check1 {self.zoomed}, {label}")
         if not self.zoomed and label != "blank":
-            print("re-limit axis", self.ylim)
+            # print("re-limit axis", self.ylim)
             self.left_axis.relim()
             self.left_axis.autoscale()
             # if self.ylim:  # TODO: test if this is needed
@@ -256,7 +256,7 @@ class PyPlotFrame(tk.Frame):
             # tick_skips = len(x) // 6
             # print(f"tick skips: {tick_skips}")
             # self.axis.set_xticks(self.axis.get_xticks()[::tick_skips])
-        print("Update in graph_v2; drawing")
+        # print("Update in graph_v2; drawing")
         self.canvas.draw()
 
     def toggle_right_axis(self):
@@ -282,11 +282,12 @@ class PyPlotFrame(tk.Frame):
         self.right_axis.tick_params(axis='y', left=False,
                                     right=True, labelleft=False, labelright=True)
         self.right_axis.spines['right'].set_visible(True)  # Show the right spine
+        self._set_ylim(self.ylim[0], self.ylim[1], use_axis="right")
 
-    def update_ylim(self, y_low, y_high):
-        print(f"Updating the ylim: {y_low}, {y_high}")
+    def update_ylim(self, y_low, y_high, use_axis="left"):
+        # print(f"Updating the ylim: {y_low}, {y_high}")
         self.ylim = [y_low, y_high]
-        self._set_ylim(y_low, y_high)
+        self._set_ylim(y_low, y_high, use_axis=use_axis)
 
     def rolling_avg(self, _list):
         """

@@ -182,8 +182,6 @@ class CollapsibleFrame(tk.Frame):
             self.collapsible_frame.configure(bg=kwargs["bg"])
         elif"background" in kwargs:
             self.collapsible_frame.configure(bg=kwargs["background"])
-        if not self.collapsed:
-            self.collapsible_frame.pack(fill="both", expand=True, side=side)
 
         # figure out all the coordinates needed to put the text in the middle
         # of the simulated button
@@ -205,7 +203,9 @@ class CollapsibleFrame(tk.Frame):
             self, text=f"{self.closed_symbol} {closed_button_text}" if self.collapsed
             else f"{self.open_symbol} {open_button_text}", button_width=button_length,
             command=self.toggle)
-        self.toggle_button.pack(side=side)
+        self.toggle_button.pack(side=side, padx=10)
+        if not self.collapsed:
+            self.collapsible_frame.pack(fill="both", expand=True, side=side)
 
     def toggle(self, event=None):
         """
@@ -220,7 +220,7 @@ class CollapsibleFrame(tk.Frame):
         if self.collapsed:
             print(f"pack {self.open_symbol} {self.open_text}")
             self.collapsible_frame.pack(fill="both", expand=True,
-                                        side=self.side, before=self.toggle_button)
+                                        side=self.side)  #, before=self.toggle_button)
             self.toggle_button.config_text(text=f"{self.open_symbol} {self.open_text}")
         else:
             print(f"collapse {self.closed_symbol} {self.closed_text}")

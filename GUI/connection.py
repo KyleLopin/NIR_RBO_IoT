@@ -248,7 +248,7 @@ class BaseConnectionClass:
                         logging.error(f"Error: {_error}\nprocessing packet {packet}")
         else:
             # update the data
-            print(f"parse mqtt data keys: {packet.keys()}")
+            # print(f"parse mqtt data keys: {packet.keys()}")
             self.data.add_data(packet)
             # the data class will update the display
 
@@ -261,7 +261,7 @@ class BaseConnectionClass:
             message (str): message to send
             qos (int): quality of service to send the message with
         """
-        print(f"publishing: {message}: to topic: {topic}")
+        # print(f"publishing: {message}: to topic: {topic}")
         self.client.publish(topic, message, qos=qos)
 
     def _on_connection(self, client, userdata, flags, result, properties=None):
