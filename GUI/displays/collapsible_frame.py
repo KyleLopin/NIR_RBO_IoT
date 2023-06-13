@@ -9,7 +9,7 @@ Originally written by ChatGTP and then edited
 __author__ = "Kyle Vitautas Lopin"
 
 import tkinter as tk
-from tkinter.font import nametofont
+from tkinter.font import Font
 
 # for testing
 BUTTON_OPTS = (["Full", 0, 16000],
@@ -18,31 +18,36 @@ BUTTON_OPTS = (["Full", 0, 16000],
                ["OZ 5,000", 3500, 6500],
                ["OZ 3,500", 2000, 5000],
                ["Full range", -50000, 50000])
+BACKGROUND = "white"
+FONT_FAMILY = 'Arial'
+FONT_SIZE = 12
 
 
 class VerticalButton(tk.Canvas):
     """
-        A custom widget to display rotated text in Tkinter.
+    A custom widget to display rotated text in Tkinter.
 
-        Attributes:
-            text (str): The text to be displayed.
-            command (function): function to call when the button is clicked
-            button_width (int): how "wide" (really height after rotation) the button
-            should be, if None will be automatically calculated from text width
+    Attributes:
+        text (str): The text to be displayed.
+        command (function): function to call when the button is clicked
+        button_width (int): how "wide" (really height after rotation) the button
+        should be, if None will be automatically calculated from text width
         """
     def __init__(self, parent, text: str = "", command=None,
                  button_width: int =None):
         self.command = command
         # Calculate the coordinates for centering the text
         print(f"vert button text: {text}")
-        font = nametofont("TkDefaultFont")
+        button_font = Font(parent, family=FONT_FAMILY,
+                           size=FONT_SIZE, weight='bold',
+                           slant='roman')
         if not button_width:
-            height = font.measure(text) + 8  # 8 are for pads and space for the arrows
+            height = button_font.measure(text) + 8  # 8 are for pads and space for the arrows
         else:
             height = button_width  # the button width is the canvas height as its rotated
         # make it wide enough for the text plus a little padding (1.5*);
         # width and height are reversed after the rotation
-        width = int(1.5*font.metrics()['linespace'])
+        width = int(1.5*button_font.metrics()['linespace'])
         tk.Canvas.__init__(self, parent, borderwidth=2,
                            relief="raised", width=width,
                            height=height, background="SystemButtonFace")
@@ -50,7 +55,8 @@ class VerticalButton(tk.Canvas):
         #                              text=text, angle=90, anchor="ne")
         # put the text in the center at a 90-degree angle
         self.text = self.create_text(width//2+4, height//2+4,
-                                     text=text, angle=90)
+                                     text=text, angle=90, font=button_font)
+        print(f"bbox: ", self.bbox(self.text))
         # To mimic a button, add a bind so when the mouse is pressed on the canvas,
         # the command is called
         self.bind("<ButtonPress-1>", self.button_press)
@@ -63,35 +69,6 @@ class VerticalButton(tk.Canvas):
 
     def get_text(self):
         return self.itemcget(self.text, 'text')
-
-# class VerticalButton(tk.Frame):
-#     """
-#         A custom widget to display rotated text in Tkinter.
-#
-#         Attributes:
-#             text (str): The text to be displayed.
-#             angle (float): The angle of rotation in degrees (default is 90).
-#         """
-#     def __init__(self, parent, text="", angle=90, command=None):
-#         super().__init__(parent)
-#         # Calculate the coordinates for centering the text
-#         font = nametofont("TkDefaultFont")
-#         height = font.measure(text) + 4  # 4 are for pads
-#         width = font.metrics()['linespace'] + 4
-#         # the button can not be rotated, but we can put in a canvas and rotate the canvas
-#         self.canvas = tk.Canvas(self, width=width,
-#                            height=height, bg="red")
-#         self.canvas.pack(side='left', fill='both', expand=True)
-#
-#         self.button = tk.Button(self.canvas, text=text, command=command)
-#         self.button.place(relx=0.5, rely=0.5, anchor='center')
-#
-#         #
-#         self.canvas.create_window(0, 0, anchor="nw", window=self.button)
-#         self.canvas.bind("<Configure>", self._on_canvas_configure)
-#
-#     def _on_canvas_configure(self, event):
-#         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
 
 class RotatedText(tk.Canvas):
@@ -182,16 +159,20 @@ class CollapsibleFrame(tk.Frame):
         print(f"collapsed: {self.collapsed}")
         self.side = side
         if side == "left":
-            self.open_symbol = "⬆"
-            self.closed_symbol = "⬇"
+            self.open_symbol = '↑'
+            self.closed_symbol = '↓'
         elif side == "right":
-            self.open_symbol = "⬇"
-            self.closed_symbol = "⬆"
+            self.open_symbol = '↓'
+            self.closed_symbol = '↑'
         else:
             raise ValueError("Invalid side. Side must be 'left' or 'right'.")
 
         # Create a frame to hold the collapsible elements
         self.collapsible_frame = tk.Frame(self)
+        if "bg" in kwargs:
+            self.collapsible_frame.configure(bg=kwargs["bg"])
+        elif"background" in kwargs:
+            self.collapsible_frame.configure(bg=kwargs["background"])
         if not self.collapsed:
             self.collapsible_frame.pack(fill="both", expand=True, side=side)
 
@@ -199,7 +180,8 @@ class CollapsibleFrame(tk.Frame):
         # of the simulated button
         max_text = max(closed_button_text, open_button_text)  # get longest string
         # get font properties
-        font = nametofont("TkDefaultFont")
+        font = Font(parent, family=FONT_FAMILY, size=FONT_SIZE, weight='bold')
+
         # calculated how big the button is based on longest text
         button_length = int(font.measure(max_text) * 1.2)
 
@@ -225,12 +207,12 @@ class CollapsibleFrame(tk.Frame):
         """
         print("toogle")
         if self.collapsed:
-            print("pack")
+            print(f"pack {self.open_symbol} {self.open_text}")
             self.collapsible_frame.pack(fill="both", expand=True,
                                         side=self.side, before=self.toggle_button)
             self.toggle_button.config_text(text=f"{self.open_symbol} {self.open_text}")
         else:
-            print("collapse")
+            print(f"collapse {self.closed_symbol} {self.closed_text}")
             self.collapsible_frame.pack_forget()
             self.toggle_button.config_text(text=f"{self.closed_symbol} {self.closed_text}")
         self.collapsed = not self.collapsed
